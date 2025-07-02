@@ -1,30 +1,33 @@
 {
-	"permissions": {
-		"allow": [
-			"Bash(pnpm init:*)",
-			"Bash(pnpm add:*)",
-			"Bash(pnpm exec:*)",
-			"Bash(git init:*)",
-			"Bash(mkdir:*)",
-			"Bash(chmod:*)",
-			"Bash(pnpm build)",
-			"Bash(git add:*)",
-			"Bash(git branch:*)",
-			"Bash(git cherry-pick:*)",
-			"Bash(rm:*)",
-			"Bash(git reset:*)",
-			"Bash(git commit:*)",
-			"Bash(pnpm dev:*)",
-			"Bash(cp:*)",
-			"Bash(lsof:*)",
-			"Bash(kill:*)",
-			"Bash(git restore:*)",
-			"Bash(npm run build:*)",
-			"Bash(pnpm:*)",
-			"mcp__ide__getDiagnostics",
-			"Bash(rg:*)",
-			"Bash(curl:*)"
-		],
-		"deny": []
-	}
+  "permissions": {
+    "allow": [
+      "Bash(pnpm init:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm exec:*)",
+      "Bash(git init:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(pnpm build)",
+      "Bash(git add:*)",
+      "Bash(git branch:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(cp:*)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(git restore:*)",
+      "Bash(npm run build:*)",
+      "Bash(pnpm:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(rg:*)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(true)",
+      "Bash(git rm:*)"
+    ],
+    "deny": []
+  }
 }

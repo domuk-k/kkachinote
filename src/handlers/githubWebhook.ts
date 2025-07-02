@@ -78,7 +78,10 @@ export async function githubWebhookHandler(
 
 		// Generate review comments
 		const diffText = diffResponse.files
-			.map((file) => `--- a/${file.filename}\n+++ b/${file.filename}\n${file.patch || ""}`)
+			.map(
+				(file) =>
+					`--- a/${file.filename}\n+++ b/${file.filename}\n${file.patch || ""}`,
+			)
 			.join("\n\n");
 
 		logger.info("Starting review generation", {

@@ -6,7 +6,18 @@ import { logger } from "./utils/logger.js";
 import { testReviewPlugin } from "./utils/testReviewPlugin.js";
 
 const server = Fastify({
-	logger,
+	logger: {
+		level: process.env.LOG_LEVEL || "info",
+		transport:
+			process.env.NODE_ENV !== "production"
+				? {
+						target: "pino-pretty",
+						options: {
+							colorize: true,
+						},
+					}
+				: undefined,
+	},
 });
 
 server.register(cors, {

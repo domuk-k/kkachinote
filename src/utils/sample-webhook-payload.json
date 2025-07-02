@@ -5,17 +5,17 @@
 		"number": 1,
 		"title": "Add new feature",
 		"body": "This PR adds a new feature for better user experience.",
-		"html_url": "https://github.com/owner/repo/pull/1"
+		"html_url": "https://github.com/domuk-k/bot-test/pull/1"
 	},
 	"repository": {
 		"owner": {
-			"login": "owner"
+			"login": "domuk-k"
 		},
-		"name": "repo",
-		"full_name": "owner/repo"
+		"name": "bot-test",
+		"full_name": "domuk-k/bot-test"
 	},
 	"sender": {
-		"login": "contributor",
-		"avatar_url": "https://github.com/contributor.png"
+		"login": "domuk-k",
+		"avatar_url": "https://github.com/domuk-k.png"
 	}
 }
