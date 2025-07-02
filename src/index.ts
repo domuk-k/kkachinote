@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { appConfig } from "./config.js";
-import { webhookHandler } from "./handlers/webhook.js";
+import { githubWebhookHandler } from "./handlers/githubWebhook.js";
 import { logger } from "./utils/logger.js";
 
 const server = Fastify({
@@ -12,7 +12,7 @@ server.register(cors, {
 	origin: true,
 });
 
-server.post("/webhook", webhookHandler);
+server.post("/webhook", githubWebhookHandler);
 
 server.get("/health", async () => {
 	return { status: "ok", timestamp: new Date().toISOString() };

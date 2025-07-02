@@ -1,20 +1,20 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(pnpm init:*)",
-      "Bash(pnpm add:*)",
-      "Bash(pnpm exec:*)",
-      "Bash(git init:*)",
-      "Bash(mkdir:*)",
-      "Bash(chmod:*)",
-      "Bash(pnpm build)",
-      "Bash(git add:*)",
-      "Bash(git branch:*)",
-      "Bash(git cherry-pick:*)",
-      "Bash(rm:*)",
-      "Bash(git reset:*)",
-      "Bash(git commit:*)"
-    ],
-    "deny": []
-  }
+	"permissions": {
+		"allow": [
+			"Bash(pnpm init:*)",
+			"Bash(pnpm add:*)",
+			"Bash(pnpm exec:*)",
+			"Bash(git init:*)",
+			"Bash(mkdir:*)",
+			"Bash(chmod:*)",
+			"Bash(pnpm build)",
+			"Bash(git add:*)",
+			"Bash(git branch:*)",
+			"Bash(git cherry-pick:*)",
+			"Bash(rm:*)",
+			"Bash(git reset:*)",
+			"Bash(git commit:*)"
+		],
+		"deny": []
+	}
 }

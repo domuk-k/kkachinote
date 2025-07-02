@@ -29,6 +29,1103 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/getPluginName.js
+var require_getPluginName = __commonJS({
+  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/getPluginName.js"(exports2, module2) {
+    "use strict";
+    var fpStackTracePattern = /at\s{1}(?:.*\.)?plugin\s{1}.*\n\s*(.*)/;
+    var fileNamePattern = /(\w*(\.\w*)*)\..*/;
+    module2.exports = function getPluginName(fn) {
+      if (fn.name.length > 0) return fn.name;
+      const stackTraceLimit = Error.stackTraceLimit;
+      Error.stackTraceLimit = 10;
+      try {
+        throw new Error("anonymous function");
+      } catch (e) {
+        Error.stackTraceLimit = stackTraceLimit;
+        return extractPluginName(e.stack);
+      }
+    };
+    function extractPluginName(stack) {
+      const m = stack.match(fpStackTracePattern);
+      return m ? m[1].split(/[/\\]/).slice(-1)[0].match(fileNamePattern)[1] : "anonymous";
+    }
+    module2.exports.extractPluginName = extractPluginName;
+  }
+});
+
+// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/toCamelCase.js
+var require_toCamelCase = __commonJS({
+  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/toCamelCase.js"(exports2, module2) {
+    "use strict";
+    module2.exports = function toCamelCase(name) {
+      if (name[0] === "@") {
+        name = name.slice(1).replace("/", "-");
+      }
+      return name.replace(/-(.)/g, function(match, g1) {
+        return g1.toUpperCase();
+      });
+    };
+  }
+});
+
+// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/plugin.js
+var require_plugin = __commonJS({
+  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/plugin.js"(exports2, module2) {
+    "use strict";
+    var getPluginName = require_getPluginName();
+    var toCamelCase = require_toCamelCase();
+    var count = 0;
+    function plugin(fn, options = {}) {
+      let autoName = false;
+      if (fn.default !== void 0) {
+        fn = fn.default;
+      }
+      if (typeof fn !== "function") {
+        throw new TypeError(
+          `fastify-plugin expects a function, instead got a '${typeof fn}'`
+        );
+      }
+      if (typeof options === "string") {
+        options = {
+          fastify: options
+        };
+      }
+      if (typeof options !== "object" || Array.isArray(options) || options === null) {
+        throw new TypeError("The options object should be an object");
+      }
+      if (options.fastify !== void 0 && typeof options.fastify !== "string") {
+        throw new TypeError(`fastify-plugin expects a version string, instead got '${typeof options.fastify}'`);
+      }
+      if (!options.name) {
+        autoName = true;
+        options.name = getPluginName(fn) + "-auto-" + count++;
+      }
+      fn[Symbol.for("skip-override")] = options.encapsulate !== true;
+      fn[Symbol.for("fastify.display-name")] = options.name;
+      fn[Symbol.for("plugin-meta")] = options;
+      if (!fn.default) {
+        fn.default = fn;
+      }
+      const camelCase = toCamelCase(options.name);
+      if (!autoName && !fn[camelCase]) {
+        fn[camelCase] = fn;
+      }
+      return fn;
+    }
+    module2.exports = plugin;
+    module2.exports.default = plugin;
+    module2.exports.fastifyPlugin = plugin;
+  }
+});
+
+// node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.cjs
+var require_toad_cache = __commonJS({
+  "node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.cjs"(exports2) {
+    "use strict";
+    var FifoMap = class {
+      constructor(max = 1e3, ttlInMsecs = 0) {
+        if (isNaN(max) || max < 0) {
+          throw new Error("Invalid max value");
+        }
+        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
+          throw new Error("Invalid ttl value");
+        }
+        this.first = null;
+        this.items = /* @__PURE__ */ new Map();
+        this.last = null;
+        this.max = max;
+        this.ttl = ttlInMsecs;
+      }
+      get size() {
+        return this.items.size;
+      }
+      clear() {
+        this.items = /* @__PURE__ */ new Map();
+        this.first = null;
+        this.last = null;
+      }
+      delete(key) {
+        if (this.items.has(key)) {
+          const deletedItem = this.items.get(key);
+          this.items.delete(key);
+          if (deletedItem.prev !== null) {
+            deletedItem.prev.next = deletedItem.next;
+          }
+          if (deletedItem.next !== null) {
+            deletedItem.next.prev = deletedItem.prev;
+          }
+          if (this.first === deletedItem) {
+            this.first = deletedItem.next;
+          }
+          if (this.last === deletedItem) {
+            this.last = deletedItem.prev;
+          }
+        }
+      }
+      deleteMany(keys) {
+        for (var i = 0; i < keys.length; i++) {
+          this.delete(keys[i]);
+        }
+      }
+      evict() {
+        if (this.size > 0) {
+          const item = this.first;
+          this.items.delete(item.key);
+          if (this.size === 0) {
+            this.first = null;
+            this.last = null;
+          } else {
+            this.first = item.next;
+            this.first.prev = null;
+          }
+        }
+      }
+      expiresAt(key) {
+        if (this.items.has(key)) {
+          return this.items.get(key).expiry;
+        }
+      }
+      get(key) {
+        if (this.items.has(key)) {
+          const item = this.items.get(key);
+          if (this.ttl > 0 && item.expiry <= Date.now()) {
+            this.delete(key);
+            return;
+          }
+          return item.value;
+        }
+      }
+      getMany(keys) {
+        const result = [];
+        for (var i = 0; i < keys.length; i++) {
+          result.push(this.get(keys[i]));
+        }
+        return result;
+      }
+      keys() {
+        return this.items.keys();
+      }
+      set(key, value) {
+        if (this.items.has(key)) {
+          const item2 = this.items.get(key);
+          item2.value = value;
+          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
+          return;
+        }
+        if (this.max > 0 && this.size === this.max) {
+          this.evict();
+        }
+        const item = {
+          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
+          key,
+          prev: this.last,
+          next: null,
+          value
+        };
+        this.items.set(key, item);
+        if (this.size === 1) {
+          this.first = item;
+        } else {
+          this.last.next = item;
+        }
+        this.last = item;
+      }
+    };
+    var LruMap = class {
+      constructor(max = 1e3, ttlInMsecs = 0) {
+        if (isNaN(max) || max < 0) {
+          throw new Error("Invalid max value");
+        }
+        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
+          throw new Error("Invalid ttl value");
+        }
+        this.first = null;
+        this.items = /* @__PURE__ */ new Map();
+        this.last = null;
+        this.max = max;
+        this.ttl = ttlInMsecs;
+      }
+      get size() {
+        return this.items.size;
+      }
+      bumpLru(item) {
+        if (this.last === item) {
+          return;
+        }
+        const last = this.last;
+        const next = item.next;
+        const prev = item.prev;
+        if (this.first === item) {
+          this.first = next;
+        }
+        item.next = null;
+        item.prev = last;
+        last.next = item;
+        if (prev !== null) {
+          prev.next = next;
+        }
+        if (next !== null) {
+          next.prev = prev;
+        }
+        this.last = item;
+      }
+      clear() {
+        this.items = /* @__PURE__ */ new Map();
+        this.first = null;
+        this.last = null;
+      }
+      delete(key) {
+        if (this.items.has(key)) {
+          const item = this.items.get(key);
+          this.items.delete(key);
+          if (item.prev !== null) {
+            item.prev.next = item.next;
+          }
+          if (item.next !== null) {
+            item.next.prev = item.prev;
+          }
+          if (this.first === item) {
+            this.first = item.next;
+          }
+          if (this.last === item) {
+            this.last = item.prev;
+          }
+        }
+      }
+      deleteMany(keys) {
+        for (var i = 0; i < keys.length; i++) {
+          this.delete(keys[i]);
+        }
+      }
+      evict() {
+        if (this.size > 0) {
+          const item = this.first;
+          this.items.delete(item.key);
+          if (this.size === 0) {
+            this.first = null;
+            this.last = null;
+          } else {
+            this.first = item.next;
+            this.first.prev = null;
+          }
+        }
+      }
+      expiresAt(key) {
+        if (this.items.has(key)) {
+          return this.items.get(key).expiry;
+        }
+      }
+      get(key) {
+        if (this.items.has(key)) {
+          const item = this.items.get(key);
+          if (this.ttl > 0 && item.expiry <= Date.now()) {
+            this.delete(key);
+            return;
+          }
+          this.bumpLru(item);
+          return item.value;
+        }
+      }
+      getMany(keys) {
+        const result = [];
+        for (var i = 0; i < keys.length; i++) {
+          result.push(this.get(keys[i]));
+        }
+        return result;
+      }
+      keys() {
+        return this.items.keys();
+      }
+      set(key, value) {
+        if (this.items.has(key)) {
+          const item2 = this.items.get(key);
+          item2.value = value;
+          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
+          if (this.last !== item2) {
+            this.bumpLru(item2);
+          }
+          return;
+        }
+        if (this.max > 0 && this.size === this.max) {
+          this.evict();
+        }
+        const item = {
+          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
+          key,
+          prev: this.last,
+          next: null,
+          value
+        };
+        this.items.set(key, item);
+        if (this.size === 1) {
+          this.first = item;
+        } else {
+          this.last.next = item;
+        }
+        this.last = item;
+      }
+    };
+    var LruObject = class {
+      constructor(max = 1e3, ttlInMsecs = 0) {
+        if (isNaN(max) || max < 0) {
+          throw new Error("Invalid max value");
+        }
+        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
+          throw new Error("Invalid ttl value");
+        }
+        this.first = null;
+        this.items = /* @__PURE__ */ Object.create(null);
+        this.last = null;
+        this.size = 0;
+        this.max = max;
+        this.ttl = ttlInMsecs;
+      }
+      bumpLru(item) {
+        if (this.last === item) {
+          return;
+        }
+        const last = this.last;
+        const next = item.next;
+        const prev = item.prev;
+        if (this.first === item) {
+          this.first = next;
+        }
+        item.next = null;
+        item.prev = last;
+        last.next = item;
+        if (prev !== null) {
+          prev.next = next;
+        }
+        if (next !== null) {
+          next.prev = prev;
+        }
+        this.last = item;
+      }
+      clear() {
+        this.items = /* @__PURE__ */ Object.create(null);
+        this.first = null;
+        this.last = null;
+        this.size = 0;
+      }
+      delete(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item = this.items[key];
+          delete this.items[key];
+          this.size--;
+          if (item.prev !== null) {
+            item.prev.next = item.next;
+          }
+          if (item.next !== null) {
+            item.next.prev = item.prev;
+          }
+          if (this.first === item) {
+            this.first = item.next;
+          }
+          if (this.last === item) {
+            this.last = item.prev;
+          }
+        }
+      }
+      deleteMany(keys) {
+        for (var i = 0; i < keys.length; i++) {
+          this.delete(keys[i]);
+        }
+      }
+      evict() {
+        if (this.size > 0) {
+          const item = this.first;
+          delete this.items[item.key];
+          if (--this.size === 0) {
+            this.first = null;
+            this.last = null;
+          } else {
+            this.first = item.next;
+            this.first.prev = null;
+          }
+        }
+      }
+      expiresAt(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          return this.items[key].expiry;
+        }
+      }
+      get(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item = this.items[key];
+          if (this.ttl > 0 && item.expiry <= Date.now()) {
+            this.delete(key);
+            return;
+          }
+          this.bumpLru(item);
+          return item.value;
+        }
+      }
+      getMany(keys) {
+        const result = [];
+        for (var i = 0; i < keys.length; i++) {
+          result.push(this.get(keys[i]));
+        }
+        return result;
+      }
+      keys() {
+        return Object.keys(this.items);
+      }
+      set(key, value) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item2 = this.items[key];
+          item2.value = value;
+          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
+          if (this.last !== item2) {
+            this.bumpLru(item2);
+          }
+          return;
+        }
+        if (this.max > 0 && this.size === this.max) {
+          this.evict();
+        }
+        const item = {
+          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
+          key,
+          prev: this.last,
+          next: null,
+          value
+        };
+        this.items[key] = item;
+        if (++this.size === 1) {
+          this.first = item;
+        } else {
+          this.last.next = item;
+        }
+        this.last = item;
+      }
+    };
+    var HitStatisticsRecord = class {
+      constructor() {
+        this.records = {};
+      }
+      initForCache(cacheId, currentTimeStamp) {
+        this.records[cacheId] = {
+          [currentTimeStamp]: {
+            cacheSize: 0,
+            hits: 0,
+            falsyHits: 0,
+            emptyHits: 0,
+            misses: 0,
+            expirations: 0,
+            evictions: 0,
+            invalidateOne: 0,
+            invalidateAll: 0,
+            sets: 0
+          }
+        };
+      }
+      resetForCache(cacheId) {
+        for (let key of Object.keys(this.records[cacheId])) {
+          this.records[cacheId][key] = {
+            cacheSize: 0,
+            hits: 0,
+            falsyHits: 0,
+            emptyHits: 0,
+            misses: 0,
+            expirations: 0,
+            evictions: 0,
+            invalidateOne: 0,
+            invalidateAll: 0,
+            sets: 0
+          };
+        }
+      }
+      getStatistics() {
+        return this.records;
+      }
+    };
+    function getTimestamp(date) {
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+    }
+    var HitStatistics = class {
+      constructor(cacheId, statisticTtlInHours, globalStatisticsRecord) {
+        this.cacheId = cacheId;
+        this.statisticTtlInHours = statisticTtlInHours;
+        this.collectionStart = /* @__PURE__ */ new Date();
+        this.currentTimeStamp = getTimestamp(this.collectionStart);
+        this.records = globalStatisticsRecord || new HitStatisticsRecord();
+        this.records.initForCache(this.cacheId, this.currentTimeStamp);
+      }
+      get currentRecord() {
+        if (!this.records.records[this.cacheId][this.currentTimeStamp]) {
+          this.records.records[this.cacheId][this.currentTimeStamp] = {
+            cacheSize: 0,
+            hits: 0,
+            falsyHits: 0,
+            emptyHits: 0,
+            misses: 0,
+            expirations: 0,
+            evictions: 0,
+            sets: 0,
+            invalidateOne: 0,
+            invalidateAll: 0
+          };
+        }
+        return this.records.records[this.cacheId][this.currentTimeStamp];
+      }
+      hoursPassed() {
+        return (Date.now() - this.collectionStart) / 1e3 / 60 / 60;
+      }
+      addHit() {
+        this.archiveIfNeeded();
+        this.currentRecord.hits++;
+      }
+      addFalsyHit() {
+        this.archiveIfNeeded();
+        this.currentRecord.falsyHits++;
+      }
+      addEmptyHit() {
+        this.archiveIfNeeded();
+        this.currentRecord.emptyHits++;
+      }
+      addMiss() {
+        this.archiveIfNeeded();
+        this.currentRecord.misses++;
+      }
+      addEviction() {
+        this.archiveIfNeeded();
+        this.currentRecord.evictions++;
+      }
+      setCacheSize(currentSize) {
+        this.archiveIfNeeded();
+        this.currentRecord.cacheSize = currentSize;
+      }
+      addExpiration() {
+        this.archiveIfNeeded();
+        this.currentRecord.expirations++;
+      }
+      addSet() {
+        this.archiveIfNeeded();
+        this.currentRecord.sets++;
+      }
+      addInvalidateOne() {
+        this.archiveIfNeeded();
+        this.currentRecord.invalidateOne++;
+      }
+      addInvalidateAll() {
+        this.archiveIfNeeded();
+        this.currentRecord.invalidateAll++;
+      }
+      getStatistics() {
+        return this.records.getStatistics();
+      }
+      archiveIfNeeded() {
+        if (this.hoursPassed() >= this.statisticTtlInHours) {
+          this.collectionStart = /* @__PURE__ */ new Date();
+          this.currentTimeStamp = getTimestamp(this.collectionStart);
+          this.records.initForCache(this.cacheId, this.currentTimeStamp);
+        }
+      }
+    };
+    var LruObjectHitStatistics = class extends LruObject {
+      constructor(max, ttlInMsecs, cacheId, globalStatisticsRecord, statisticTtlInHours) {
+        super(max || 1e3, ttlInMsecs || 0);
+        if (!cacheId) {
+          throw new Error("Cache id is mandatory");
+        }
+        this.hitStatistics = new HitStatistics(
+          cacheId,
+          statisticTtlInHours !== void 0 ? statisticTtlInHours : 24,
+          globalStatisticsRecord
+        );
+      }
+      getStatistics() {
+        return this.hitStatistics.getStatistics();
+      }
+      set(key, value) {
+        super.set(key, value);
+        this.hitStatistics.addSet();
+        this.hitStatistics.setCacheSize(this.size);
+      }
+      evict() {
+        super.evict();
+        this.hitStatistics.addEviction();
+        this.hitStatistics.setCacheSize(this.size);
+      }
+      delete(key, isExpiration = false) {
+        super.delete(key);
+        if (!isExpiration) {
+          this.hitStatistics.addInvalidateOne();
+        }
+        this.hitStatistics.setCacheSize(this.size);
+      }
+      clear() {
+        super.clear();
+        this.hitStatistics.addInvalidateAll();
+        this.hitStatistics.setCacheSize(this.size);
+      }
+      get(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item = this.items[key];
+          if (this.ttl > 0 && item.expiry <= Date.now()) {
+            this.delete(key, true);
+            this.hitStatistics.addExpiration();
+            return;
+          }
+          this.bumpLru(item);
+          if (!item.value) {
+            this.hitStatistics.addFalsyHit();
+          }
+          if (item.value === void 0 || item.value === null || item.value === "") {
+            this.hitStatistics.addEmptyHit();
+          }
+          this.hitStatistics.addHit();
+          return item.value;
+        }
+        this.hitStatistics.addMiss();
+      }
+    };
+    var FifoObject = class {
+      constructor(max = 1e3, ttlInMsecs = 0) {
+        if (isNaN(max) || max < 0) {
+          throw new Error("Invalid max value");
+        }
+        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
+          throw new Error("Invalid ttl value");
+        }
+        this.first = null;
+        this.items = /* @__PURE__ */ Object.create(null);
+        this.last = null;
+        this.size = 0;
+        this.max = max;
+        this.ttl = ttlInMsecs;
+      }
+      clear() {
+        this.items = /* @__PURE__ */ Object.create(null);
+        this.first = null;
+        this.last = null;
+        this.size = 0;
+      }
+      delete(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const deletedItem = this.items[key];
+          delete this.items[key];
+          this.size--;
+          if (deletedItem.prev !== null) {
+            deletedItem.prev.next = deletedItem.next;
+          }
+          if (deletedItem.next !== null) {
+            deletedItem.next.prev = deletedItem.prev;
+          }
+          if (this.first === deletedItem) {
+            this.first = deletedItem.next;
+          }
+          if (this.last === deletedItem) {
+            this.last = deletedItem.prev;
+          }
+        }
+      }
+      deleteMany(keys) {
+        for (var i = 0; i < keys.length; i++) {
+          this.delete(keys[i]);
+        }
+      }
+      evict() {
+        if (this.size > 0) {
+          const item = this.first;
+          delete this.items[item.key];
+          if (--this.size === 0) {
+            this.first = null;
+            this.last = null;
+          } else {
+            this.first = item.next;
+            this.first.prev = null;
+          }
+        }
+      }
+      expiresAt(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          return this.items[key].expiry;
+        }
+      }
+      get(key) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item = this.items[key];
+          if (this.ttl > 0 && item.expiry <= Date.now()) {
+            this.delete(key);
+            return;
+          }
+          return item.value;
+        }
+      }
+      getMany(keys) {
+        const result = [];
+        for (var i = 0; i < keys.length; i++) {
+          result.push(this.get(keys[i]));
+        }
+        return result;
+      }
+      keys() {
+        return Object.keys(this.items);
+      }
+      set(key, value) {
+        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
+          const item2 = this.items[key];
+          item2.value = value;
+          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
+          return;
+        }
+        if (this.max > 0 && this.size === this.max) {
+          this.evict();
+        }
+        const item = {
+          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
+          key,
+          prev: this.last,
+          next: null,
+          value
+        };
+        this.items[key] = item;
+        if (++this.size === 1) {
+          this.first = item;
+        } else {
+          this.last.next = item;
+        }
+        this.last = item;
+      }
+    };
+    exports2.Fifo = FifoObject;
+    exports2.FifoMap = FifoMap;
+    exports2.FifoObject = FifoObject;
+    exports2.HitStatisticsRecord = HitStatisticsRecord;
+    exports2.Lru = LruObject;
+    exports2.LruHitStatistics = LruObjectHitStatistics;
+    exports2.LruMap = LruMap;
+    exports2.LruObject = LruObject;
+    exports2.LruObjectHitStatistics = LruObjectHitStatistics;
+  }
+});
+
+// node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/vary.js
+var require_vary = __commonJS({
+  "node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/vary.js"(exports2, module2) {
+    "use strict";
+    var { FifoMap: FifoCache } = require_toad_cache();
+    var validFieldnameRE = /^[!#$%&'*+\-.^\w`|~]+$/u;
+    function validateFieldname(fieldname) {
+      if (validFieldnameRE.test(fieldname) === false) {
+        throw new TypeError("Fieldname contains invalid characters.");
+      }
+    }
+    function parse2(header) {
+      header = header.trim().toLowerCase();
+      const result = [];
+      if (header.length === 0) {
+      } else if (header.indexOf(",") === -1) {
+        result.push(header);
+      } else {
+        const il = header.length;
+        let i = 0;
+        let pos = 0;
+        let char;
+        for (i; i < il; ++i) {
+          char = header[i];
+          if (char === " ") {
+            pos = i + 1;
+          } else if (char === ",") {
+            if (pos !== i) {
+              result.push(header.slice(pos, i));
+            }
+            pos = i + 1;
+          }
+        }
+        if (pos !== i) {
+          result.push(header.slice(pos, i));
+        }
+      }
+      return result;
+    }
+    function createAddFieldnameToVary(fieldname) {
+      const headerCache = new FifoCache(1e3);
+      validateFieldname(fieldname);
+      return function(reply) {
+        let header = reply.getHeader("Vary");
+        if (!header) {
+          reply.header("Vary", fieldname);
+          return;
+        }
+        if (header === "*") {
+          return;
+        }
+        if (fieldname === "*") {
+          reply.header("Vary", "*");
+          return;
+        }
+        if (Array.isArray(header)) {
+          header = header.join(", ");
+        }
+        if (headerCache.get(header) === void 0) {
+          const vals = parse2(header);
+          if (vals.indexOf("*") !== -1) {
+            headerCache.set(header, "*");
+          } else if (vals.indexOf(fieldname.toLowerCase()) === -1) {
+            headerCache.set(header, header + ", " + fieldname);
+          } else {
+            headerCache.set(header, null);
+          }
+        }
+        const cached = headerCache.get(header);
+        if (cached !== null) {
+          reply.header("Vary", cached);
+        }
+      };
+    }
+    module2.exports.createAddFieldnameToVary = createAddFieldnameToVary;
+    module2.exports.addOriginToVaryHeader = createAddFieldnameToVary("Origin");
+    module2.exports.addAccessControlRequestHeadersToVaryHeader = createAddFieldnameToVary("Access-Control-Request-Headers");
+    module2.exports.parse = parse2;
+  }
+});
+
+// node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/index.js
+var require_cors = __commonJS({
+  "node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/index.js"(exports2, module2) {
+    "use strict";
+    var fp = require_plugin();
+    var {
+      addAccessControlRequestHeadersToVaryHeader,
+      addOriginToVaryHeader
+    } = require_vary();
+    var defaultOptions = {
+      origin: "*",
+      methods: "GET,HEAD,POST",
+      hook: "onRequest",
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+      credentials: false,
+      exposedHeaders: null,
+      allowedHeaders: null,
+      maxAge: null,
+      preflight: true,
+      strictPreflight: true
+    };
+    var validHooks = [
+      "onRequest",
+      "preParsing",
+      "preValidation",
+      "preHandler",
+      "preSerialization",
+      "onSend"
+    ];
+    var hookWithPayload = [
+      "preSerialization",
+      "preParsing",
+      "onSend"
+    ];
+    function validateHook(value, next) {
+      if (validHooks.indexOf(value) !== -1) {
+        return;
+      }
+      next(new TypeError("@fastify/cors: Invalid hook option provided."));
+    }
+    function fastifyCors(fastify, opts, next) {
+      fastify.decorateRequest("corsPreflightEnabled", false);
+      let hideOptionsRoute = true;
+      if (typeof opts === "function") {
+        handleCorsOptionsDelegator(opts, fastify, { hook: defaultOptions.hook }, next);
+      } else if (opts.delegator) {
+        const { delegator, ...options } = opts;
+        handleCorsOptionsDelegator(delegator, fastify, options, next);
+      } else {
+        if (opts.hideOptionsRoute !== void 0) hideOptionsRoute = opts.hideOptionsRoute;
+        const corsOptions = normalizeCorsOptions(opts);
+        validateHook(corsOptions.hook, next);
+        if (hookWithPayload.indexOf(corsOptions.hook) !== -1) {
+          fastify.addHook(corsOptions.hook, function handleCors(req, reply, _payload, next2) {
+            addCorsHeadersHandler(fastify, corsOptions, req, reply, next2);
+          });
+        } else {
+          fastify.addHook(corsOptions.hook, function handleCors(req, reply, next2) {
+            addCorsHeadersHandler(fastify, corsOptions, req, reply, next2);
+          });
+        }
+      }
+      fastify.options("*", { schema: { hide: hideOptionsRoute } }, (req, reply) => {
+        if (!req.corsPreflightEnabled) {
+          reply.callNotFound();
+          return;
+        }
+        reply.send();
+      });
+      next();
+    }
+    function handleCorsOptionsDelegator(optionsResolver, fastify, opts, next) {
+      const hook2 = opts?.hook || defaultOptions.hook;
+      validateHook(hook2, next);
+      if (optionsResolver.length === 2) {
+        if (hookWithPayload.indexOf(hook2) !== -1) {
+          fastify.addHook(hook2, function handleCors(req, reply, _payload, next2) {
+            handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next2);
+          });
+        } else {
+          fastify.addHook(hook2, function handleCors(req, reply, next2) {
+            handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next2);
+          });
+        }
+      } else {
+        if (hookWithPayload.indexOf(hook2) !== -1) {
+          fastify.addHook(hook2, function handleCors(req, reply, _payload, next2) {
+            const ret = optionsResolver(req);
+            if (ret && typeof ret.then === "function") {
+              ret.then((options) => addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next2)).catch(next2);
+              return;
+            }
+            next2(new Error("Invalid CORS origin option"));
+          });
+        } else {
+          fastify.addHook(hook2, function handleCors(req, reply, next2) {
+            const ret = optionsResolver(req);
+            if (ret && typeof ret.then === "function") {
+              ret.then((options) => addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next2)).catch(next2);
+              return;
+            }
+            next2(new Error("Invalid CORS origin option"));
+          });
+        }
+      }
+    }
+    function handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next) {
+      optionsResolver(req, (err, options) => {
+        if (err) {
+          next(err);
+        } else {
+          addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next);
+        }
+      });
+    }
+    function normalizeCorsOptions(opts, dynamic) {
+      const corsOptions = { ...defaultOptions, ...opts };
+      if (Array.isArray(opts.origin) && opts.origin.indexOf("*") !== -1) {
+        corsOptions.origin = "*";
+      }
+      if (Number.isInteger(corsOptions.cacheControl)) {
+        corsOptions.cacheControl = `max-age=${corsOptions.cacheControl}`;
+      } else if (typeof corsOptions.cacheControl !== "string") {
+        corsOptions.cacheControl = null;
+      }
+      corsOptions.dynamic = dynamic || false;
+      return corsOptions;
+    }
+    function addCorsHeadersHandler(fastify, options, req, reply, next) {
+      if (typeof options.origin !== "string" && options.origin !== false || options.dynamic) {
+        addOriginToVaryHeader(reply);
+      }
+      const resolveOriginOption = typeof options.origin === "function" ? resolveOriginWrapper(fastify, options.origin) : (_, cb) => cb(null, options.origin);
+      resolveOriginOption(req, (error, resolvedOriginOption) => {
+        if (error !== null) {
+          return next(error);
+        }
+        if (resolvedOriginOption === false) {
+          return next();
+        }
+        if (req.routeOptions.config?.cors === false) {
+          return next();
+        }
+        if (!resolvedOriginOption) {
+          return next(new Error("Invalid CORS origin option"));
+        }
+        addCorsHeaders(req, reply, resolvedOriginOption, options);
+        if (req.raw.method === "OPTIONS" && options.preflight === true) {
+          if (options.strictPreflight === true && (!req.headers.origin || !req.headers["access-control-request-method"])) {
+            reply.status(400).type("text/plain").send("Invalid Preflight Request");
+            return;
+          }
+          req.corsPreflightEnabled = true;
+          addPreflightHeaders(req, reply, options);
+          if (!options.preflightContinue) {
+            reply.code(options.optionsSuccessStatus).header("Content-Length", "0").send();
+            return;
+          }
+        }
+        return next();
+      });
+    }
+    function addCorsHeaders(req, reply, originOption, corsOptions) {
+      const origin = getAccessControlAllowOriginHeader(req.headers.origin, originOption);
+      if (origin) {
+        reply.header("Access-Control-Allow-Origin", origin);
+      }
+      if (corsOptions.credentials) {
+        reply.header("Access-Control-Allow-Credentials", "true");
+      }
+      if (corsOptions.exposedHeaders !== null) {
+        reply.header(
+          "Access-Control-Expose-Headers",
+          Array.isArray(corsOptions.exposedHeaders) ? corsOptions.exposedHeaders.join(", ") : corsOptions.exposedHeaders
+        );
+      }
+    }
+    function addPreflightHeaders(req, reply, corsOptions) {
+      reply.header(
+        "Access-Control-Allow-Methods",
+        Array.isArray(corsOptions.methods) ? corsOptions.methods.join(", ") : corsOptions.methods
+      );
+      if (corsOptions.allowedHeaders === null) {
+        addAccessControlRequestHeadersToVaryHeader(reply);
+        const reqAllowedHeaders = req.headers["access-control-request-headers"];
+        if (reqAllowedHeaders !== void 0) {
+          reply.header("Access-Control-Allow-Headers", reqAllowedHeaders);
+        }
+      } else {
+        reply.header(
+          "Access-Control-Allow-Headers",
+          Array.isArray(corsOptions.allowedHeaders) ? corsOptions.allowedHeaders.join(", ") : corsOptions.allowedHeaders
+        );
+      }
+      if (corsOptions.maxAge !== null) {
+        reply.header("Access-Control-Max-Age", String(corsOptions.maxAge));
+      }
+      if (corsOptions.cacheControl) {
+        reply.header("Cache-Control", corsOptions.cacheControl);
+      }
+    }
+    function resolveOriginWrapper(fastify, origin) {
+      return function(req, cb) {
+        const result = origin.call(fastify, req.headers.origin, cb);
+        if (result && typeof result.then === "function") {
+          result.then((res) => cb(null, res), cb);
+        }
+      };
+    }
+    function getAccessControlAllowOriginHeader(reqOrigin, originOption) {
+      if (typeof originOption === "string") {
+        return originOption;
+      }
+      return isRequestOriginAllowed(reqOrigin, originOption) ? reqOrigin : false;
+    }
+    function isRequestOriginAllowed(reqOrigin, allowedOrigin) {
+      if (Array.isArray(allowedOrigin)) {
+        for (let i = 0; i < allowedOrigin.length; ++i) {
+          if (isRequestOriginAllowed(reqOrigin, allowedOrigin[i])) {
+            return true;
+          }
+        }
+        return false;
+      } else if (typeof allowedOrigin === "string") {
+        return reqOrigin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        allowedOrigin.lastIndex = 0;
+        return allowedOrigin.test(reqOrigin);
+      } else {
+        return !!allowedOrigin;
+      }
+    }
+    var _fastifyCors = fp(fastifyCors, {
+      fastify: "5.x",
+      name: "@fastify/cors"
+    });
+    module2.exports = _fastifyCors;
+    module2.exports.fastifyCors = _fastifyCors;
+    module2.exports.default = _fastifyCors;
+  }
+});
+
 // node_modules/.pnpm/reusify@1.1.0/node_modules/reusify/reusify.js
 var require_reusify = __commonJS({
   "node_modules/.pnpm/reusify@1.1.0/node_modules/reusify/reusify.js"(exports2, module2) {
@@ -81,8 +1178,8 @@ var require_queue = __commonJS({
       var errorHandler = null;
       var self = {
         push,
-        drain: noop,
-        saturated: noop,
+        drain: noop2,
+        saturated: noop2,
         pause,
         paused: false,
         get concurrency() {
@@ -105,7 +1202,7 @@ var require_queue = __commonJS({
         length,
         getQueue,
         unshift,
-        empty: noop,
+        empty: noop2,
         kill,
         killAndDrain,
         error
@@ -156,7 +1253,7 @@ var require_queue = __commonJS({
         current.context = context;
         current.release = release;
         current.value = value;
-        current.callback = done || noop;
+        current.callback = done || noop2;
         current.errorHandler = errorHandler;
         if (_running >= _concurrency || self.paused) {
           if (queueTail) {
@@ -177,7 +1274,7 @@ var require_queue = __commonJS({
         current.context = context;
         current.release = release;
         current.value = value;
-        current.callback = done || noop;
+        current.callback = done || noop2;
         current.errorHandler = errorHandler;
         if (_running >= _concurrency || self.paused) {
           if (queueHead) {
@@ -219,25 +1316,25 @@ var require_queue = __commonJS({
       function kill() {
         queueHead = null;
         queueTail = null;
-        self.drain = noop;
+        self.drain = noop2;
       }
       function killAndDrain() {
         queueHead = null;
         queueTail = null;
         self.drain();
-        self.drain = noop;
+        self.drain = noop2;
       }
-      function error(handler) {
-        errorHandler = handler;
+      function error(handler2) {
+        errorHandler = handler2;
       }
     }
-    function noop() {
+    function noop2() {
     }
     function Task() {
       this.value = null;
-      this.callback = noop;
+      this.callback = noop2;
       this.next = null;
-      this.release = noop;
+      this.release = noop2;
       this.context = null;
       this.errorHandler = null;
       var self = this;
@@ -246,7 +1343,7 @@ var require_queue = __commonJS({
         var errorHandler = self.errorHandler;
         var val = self.value;
         self.value = null;
-        self.callback = noop;
+        self.callback = noop2;
         if (self.errorHandler) {
           errorHandler(err, val);
         }
@@ -282,7 +1379,7 @@ var require_queue = __commonJS({
             resolve(result);
           });
         });
-        p.catch(noop);
+        p.catch(noop2);
         return p;
       }
       function unshift(value) {
@@ -295,7 +1392,7 @@ var require_queue = __commonJS({
             resolve(result);
           });
         });
-        p.catch(noop);
+        p.catch(noop2);
         return p;
       }
       function drained() {
@@ -700,7 +1797,7 @@ var require_is_promise_like = __commonJS({
 });
 
 // node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/lib/plugin.js
-var require_plugin = __commonJS({
+var require_plugin2 = __commonJS({
   "node_modules/.pnpm/avvio@9.1.0/node_modules/avvio/lib/plugin.js"(exports2, module2) {
     "use strict";
     var { EventEmitter } = require("node:events");
@@ -853,7 +1950,7 @@ var require_plugin = __commonJS({
           debug("delayed", this.name);
           this.queue.drain = () => {
             debug("drain", this.name);
-            this.queue.drain = noop;
+            this.queue.drain = noop2;
             queueMicrotask(check);
           };
         }
@@ -861,7 +1958,7 @@ var require_plugin = __commonJS({
       queueMicrotask(check);
       this.queue.resume();
     };
-    function noop() {
+    function noop2() {
     }
     module2.exports = {
       Plugin
@@ -973,7 +2070,7 @@ var require_boot = __commonJS({
       kIsOnCloseHandler
     } = require_symbols();
     var { TimeTree } = require_time_tree();
-    var { Plugin } = require_plugin();
+    var { Plugin } = require_plugin2();
     var { debug } = require_debug();
     var { validatePlugin } = require_validate_plugin();
     var { isBundledOrTypescriptPlugin } = require_is_bundled_or_typescript_plugin();
@@ -1016,13 +2113,13 @@ var require_boot = __commonJS({
       this._readyQ.pause();
       this._readyQ.drain = () => {
         this.emit("start");
-        this._readyQ.drain = noop;
+        this._readyQ.drain = noop2;
       };
       this._closeQ = fastq(this, closeWithCbOrNextTick, 1);
       this._closeQ.pause();
       this._closeQ.drain = () => {
         this.emit("close");
-        this._closeQ.drain = noop;
+        this._closeQ.drain = noop2;
       };
       this._doStart = null;
       const instance = this;
@@ -1286,7 +2383,7 @@ var require_boot = __commonJS({
     Boot.prototype._loadPluginNextTick = function(plugin, callback) {
       process.nextTick(this._loadPlugin.bind(this), plugin, callback);
     };
-    function noop() {
+    function noop2() {
     }
     function callWithCbOrNextTick(func, cb) {
       const context = this._server;
@@ -2142,16 +3239,16 @@ var require_hooks = __commonJS({
       this.preClose = [];
     }
     Hooks.prototype = /* @__PURE__ */ Object.create(null);
-    Hooks.prototype.validate = function(hook, fn) {
-      if (typeof hook !== "string") throw new FST_ERR_HOOK_INVALID_TYPE();
-      if (Array.isArray(this[hook]) === false) {
-        throw new FST_ERR_HOOK_NOT_SUPPORTED(hook);
+    Hooks.prototype.validate = function(hook2, fn) {
+      if (typeof hook2 !== "string") throw new FST_ERR_HOOK_INVALID_TYPE();
+      if (Array.isArray(this[hook2]) === false) {
+        throw new FST_ERR_HOOK_NOT_SUPPORTED(hook2);
       }
-      if (typeof fn !== "function") throw new FST_ERR_HOOK_INVALID_HANDLER(hook, Object.prototype.toString.call(fn));
+      if (typeof fn !== "function") throw new FST_ERR_HOOK_INVALID_HANDLER(hook2, Object.prototype.toString.call(fn));
     };
-    Hooks.prototype.add = function(hook, fn) {
-      this.validate(hook, fn);
-      this[hook].push(fn);
+    Hooks.prototype.add = function(hook2, fn) {
+      this.validate(hook2, fn);
+      this[hook2].push(fn);
     };
     function buildHooks(h) {
       const hooks = new Hooks();
@@ -2280,19 +3377,19 @@ var require_hooks = __commonJS({
         }
       }
     }
-    function hookRunnerGenerator(iterator) {
-      return function hookRunner(functions, request, reply, cb) {
+    function hookRunnerGenerator(iterator2) {
+      return function hookRunner(functions, request2, reply, cb) {
         let i = 0;
         function next(err) {
           if (err || i === functions.length) {
-            cb(err, request, reply);
+            cb(err, request2, reply);
             return;
           }
           let result;
           try {
-            result = iterator(functions[i++], request, reply, next);
+            result = iterator2(functions[i++], request2, reply, next);
           } catch (error) {
-            cb(error, request, reply);
+            cb(error, request2, reply);
             return;
           }
           if (result && typeof result.then === "function") {
@@ -2306,38 +3403,38 @@ var require_hooks = __commonJS({
           if (!err) {
             err = new FST_ERR_SEND_UNDEFINED_ERR();
           }
-          cb(err, request, reply);
+          cb(err, request2, reply);
         }
         next();
       };
     }
-    function onResponseHookIterator(fn, request, reply, next) {
-      return fn(request, reply, next);
+    function onResponseHookIterator(fn, request2, reply, next) {
+      return fn(request2, reply, next);
     }
     var onResponseHookRunner = hookRunnerGenerator(onResponseHookIterator);
     var preValidationHookRunner = hookRunnerGenerator(hookIterator);
     var preHandlerHookRunner = hookRunnerGenerator(hookIterator);
     var onTimeoutHookRunner = hookRunnerGenerator(hookIterator);
     var onRequestHookRunner = hookRunnerGenerator(hookIterator);
-    function onSendHookRunner(functions, request, reply, payload, cb) {
+    function onSendHookRunner(functions, request2, reply, payload, cb) {
       let i = 0;
       function next(err, newPayload) {
         if (err) {
-          cb(err, request, reply, payload);
+          cb(err, request2, reply, payload);
           return;
         }
         if (newPayload !== void 0) {
           payload = newPayload;
         }
         if (i === functions.length) {
-          cb(null, request, reply, payload);
+          cb(null, request2, reply, payload);
           return;
         }
         let result;
         try {
-          result = functions[i++](request, reply, payload, next);
+          result = functions[i++](request2, reply, payload, next);
         } catch (error) {
-          cb(error, request, reply);
+          cb(error, request2, reply);
           return;
         }
         if (result && typeof result.then === "function") {
@@ -2351,29 +3448,29 @@ var require_hooks = __commonJS({
         if (!err) {
           err = new FST_ERR_SEND_UNDEFINED_ERR();
         }
-        cb(err, request, reply, payload);
+        cb(err, request2, reply, payload);
       }
       next();
     }
     var preSerializationHookRunner = onSendHookRunner;
-    function preParsingHookRunner(functions, request, reply, cb) {
+    function preParsingHookRunner(functions, request2, reply, cb) {
       let i = 0;
       function next(err, newPayload) {
         if (reply.sent) {
           return;
         }
         if (newPayload !== void 0) {
-          request[kRequestPayloadStream] = newPayload;
+          request2[kRequestPayloadStream] = newPayload;
         }
         if (err || i === functions.length) {
-          cb(err, request, reply);
+          cb(err, request2, reply);
           return;
         }
         let result;
         try {
-          result = functions[i++](request, reply, request[kRequestPayloadStream], next);
+          result = functions[i++](request2, reply, request2[kRequestPayloadStream], next);
         } catch (error) {
-          cb(error, request, reply);
+          cb(error, request2, reply);
           return;
         }
         if (result && typeof result.then === "function") {
@@ -2387,22 +3484,22 @@ var require_hooks = __commonJS({
         if (!err) {
           err = new FST_ERR_SEND_UNDEFINED_ERR();
         }
-        cb(err, request, reply);
+        cb(err, request2, reply);
       }
       next();
     }
-    function onRequestAbortHookRunner(functions, request, cb) {
+    function onRequestAbortHookRunner(functions, request2, cb) {
       let i = 0;
       function next(err) {
         if (err || i === functions.length) {
-          cb(err, request);
+          cb(err, request2);
           return;
         }
         let result;
         try {
-          result = functions[i++](request, next);
+          result = functions[i++](request2, next);
         } catch (error) {
-          cb(error, request);
+          cb(error, request2);
           return;
         }
         if (result && typeof result.then === "function") {
@@ -2416,13 +3513,13 @@ var require_hooks = __commonJS({
         if (!err) {
           err = new FST_ERR_SEND_UNDEFINED_ERR();
         }
-        cb(err, request);
+        cb(err, request2);
       }
       next();
     }
-    function hookIterator(fn, request, reply, next) {
+    function hookIterator(fn, request2, reply, next) {
       if (reply.sent === true) return void 0;
-      return fn(request, reply, next);
+      return fn(request2, reply, next);
     }
     module2.exports = {
       Hooks,
@@ -2823,9 +3920,9 @@ var require_validation = __commonJS({
         FSTWRN001("params", method, url);
       }
     }
-    function validateParam(validatorFunction, request, paramName) {
-      const isUndefined = request[paramName] === void 0;
-      const ret = validatorFunction && validatorFunction(isUndefined ? null : request[paramName]);
+    function validateParam(validatorFunction, request2, paramName) {
+      const isUndefined = request2[paramName] === void 0;
+      const ret = validatorFunction && validatorFunction(isUndefined ? null : request2[paramName]);
       if (ret && typeof ret.then === "function") {
         return ret.then((res) => {
           return answer(res);
@@ -2837,19 +3934,19 @@ var require_validation = __commonJS({
       function answer(ret2) {
         if (ret2 === false) return validatorFunction.errors;
         if (ret2 && ret2.error) return ret2.error;
-        if (ret2 && ret2.value) request[paramName] = ret2.value;
+        if (ret2 && ret2.value) request2[paramName] = ret2.value;
         return false;
       }
     }
-    function validate(context, request, execution) {
+    function validate(context, request2, execution) {
       const runExecution = execution === void 0;
       if (runExecution || !execution.skipParams) {
-        const params = validateParam(context[paramsSchema], request, "params");
+        const params = validateParam(context[paramsSchema], request2, "params");
         if (params) {
           if (typeof params.then !== "function") {
             return wrapValidationError(params, "params", context.schemaErrorFormatter);
           } else {
-            return validateAsyncParams(params, context, request);
+            return validateAsyncParams(params, context, request2);
           }
         }
       }
@@ -2858,66 +3955,66 @@ var require_validation = __commonJS({
         if (typeof context[bodySchema] === "function") {
           validatorFunction = context[bodySchema];
         } else if (context[bodySchema]) {
-          const contentType = getEssenceMediaType(request.headers["content-type"]);
+          const contentType = getEssenceMediaType(request2.headers["content-type"]);
           const contentSchema = context[bodySchema][contentType];
           if (contentSchema) {
             validatorFunction = contentSchema;
           }
         }
-        const body = validateParam(validatorFunction, request, "body");
+        const body = validateParam(validatorFunction, request2, "body");
         if (body) {
           if (typeof body.then !== "function") {
             return wrapValidationError(body, "body", context.schemaErrorFormatter);
           } else {
-            return validateAsyncBody(body, context, request);
+            return validateAsyncBody(body, context, request2);
           }
         }
       }
       if (runExecution || !execution.skipQuery) {
-        const query = validateParam(context[querystringSchema], request, "query");
+        const query = validateParam(context[querystringSchema], request2, "query");
         if (query) {
           if (typeof query.then !== "function") {
             return wrapValidationError(query, "querystring", context.schemaErrorFormatter);
           } else {
-            return validateAsyncQuery(query, context, request);
+            return validateAsyncQuery(query, context, request2);
           }
         }
       }
-      const headers = validateParam(context[headersSchema], request, "headers");
+      const headers = validateParam(context[headersSchema], request2, "headers");
       if (headers) {
         if (typeof headers.then !== "function") {
           return wrapValidationError(headers, "headers", context.schemaErrorFormatter);
         } else {
-          return validateAsyncHeaders(headers, context, request);
+          return validateAsyncHeaders(headers, context, request2);
         }
       }
       return false;
     }
-    function validateAsyncParams(validatePromise, context, request) {
+    function validateAsyncParams(validatePromise, context, request2) {
       return validatePromise.then((paramsResult) => {
         if (paramsResult) {
           return wrapValidationError(paramsResult, "params", context.schemaErrorFormatter);
         }
-        return validate(context, request, { skipParams: true });
+        return validate(context, request2, { skipParams: true });
       });
     }
-    function validateAsyncBody(validatePromise, context, request) {
+    function validateAsyncBody(validatePromise, context, request2) {
       return validatePromise.then((bodyResult) => {
         if (bodyResult) {
           return wrapValidationError(bodyResult, "body", context.schemaErrorFormatter);
         }
-        return validate(context, request, { skipParams: true, skipBody: true });
+        return validate(context, request2, { skipParams: true, skipBody: true });
       });
     }
-    function validateAsyncQuery(validatePromise, context, request) {
+    function validateAsyncQuery(validatePromise, context, request2) {
       return validatePromise.then((queryResult) => {
         if (queryResult) {
           return wrapValidationError(queryResult, "querystring", context.schemaErrorFormatter);
         }
-        return validate(context, request, { skipParams: true, skipBody: true, skipQuery: true });
+        return validate(context, request2, { skipParams: true, skipBody: true, skipQuery: true });
       });
     }
-    function validateAsyncHeaders(validatePromise, context, request) {
+    function validateAsyncHeaders(validatePromise, context, request2) {
       return validatePromise.then((headersResult) => {
         if (headersResult) {
           return wrapValidationError(headersResult, "headers", context.schemaErrorFormatter);
@@ -3028,18 +4125,18 @@ var require_handleRequest = __commonJS({
       kSupportedHTTPMethods
     } = require_symbols2();
     var channels = diagnostics.tracingChannel("fastify.request.handler");
-    function handleRequest(err, request, reply) {
+    function handleRequest(err, request2, reply) {
       if (reply.sent === true) return;
       if (err != null) {
         reply[kReplyIsError] = true;
         reply.send(err);
         return;
       }
-      const method = request.raw.method;
-      const headers = request.headers;
-      const context = request[kRouteContext];
+      const method = request2.raw.method;
+      const headers = request2.headers;
+      const context = request2[kRouteContext];
       if (this[kSupportedHTTPMethods].bodyless.has(method)) {
-        handler(request, reply);
+        handler2(request2, reply);
         return;
       }
       if (this[kSupportedHTTPMethods].bodywith.has(method)) {
@@ -3048,54 +4145,54 @@ var require_handleRequest = __commonJS({
         const transferEncoding = headers["transfer-encoding"];
         if (contentType === void 0) {
           if ((contentLength === void 0 || contentLength === "0") && transferEncoding === void 0) {
-            handler(request, reply);
+            handler2(request2, reply);
           } else {
-            context.contentTypeParser.run("", handler, request, reply);
+            context.contentTypeParser.run("", handler2, request2, reply);
           }
         } else {
           if (contentLength === void 0 && transferEncoding === void 0 && method === "OPTIONS") {
-            handler(request, reply);
+            handler2(request2, reply);
             return;
           }
-          context.contentTypeParser.run(contentType, handler, request, reply);
+          context.contentTypeParser.run(contentType, handler2, request2, reply);
         }
         return;
       }
-      handler(request, reply);
+      handler2(request2, reply);
     }
-    function handler(request, reply) {
+    function handler2(request2, reply) {
       try {
-        if (request[kRouteContext].preValidation !== null) {
+        if (request2[kRouteContext].preValidation !== null) {
           preValidationHookRunner(
-            request[kRouteContext].preValidation,
-            request,
+            request2[kRouteContext].preValidation,
+            request2,
             reply,
             preValidationCallback
           );
         } else {
-          preValidationCallback(null, request, reply);
+          preValidationCallback(null, request2, reply);
         }
       } catch (err) {
-        preValidationCallback(err, request, reply);
+        preValidationCallback(err, request2, reply);
       }
     }
-    function preValidationCallback(err, request, reply) {
+    function preValidationCallback(err, request2, reply) {
       if (reply.sent === true) return;
       if (err != null) {
         reply[kReplyIsError] = true;
         reply.send(err);
         return;
       }
-      const validationErr = validateSchema(reply[kRouteContext], request);
+      const validationErr = validateSchema(reply[kRouteContext], request2);
       const isAsync2 = validationErr && typeof validationErr.then === "function" || false;
       if (isAsync2) {
-        const cb = validationCompleted.bind(null, request, reply);
+        const cb = validationCompleted.bind(null, request2, reply);
         validationErr.then(cb, cb);
       } else {
-        validationCompleted(request, reply, validationErr);
+        validationCompleted(request2, reply, validationErr);
       }
     }
-    function validationCompleted(request, reply, validationErr) {
+    function validationCompleted(request2, reply, validationErr) {
       if (validationErr) {
         if (reply[kRouteContext].attachValidation === false) {
           reply.send(validationErr);
@@ -3103,25 +4200,25 @@ var require_handleRequest = __commonJS({
         }
         reply.request.validationError = validationErr;
       }
-      if (request[kRouteContext].preHandler !== null) {
+      if (request2[kRouteContext].preHandler !== null) {
         preHandlerHookRunner(
-          request[kRouteContext].preHandler,
-          request,
+          request2[kRouteContext].preHandler,
+          request2,
           reply,
           preHandlerCallback
         );
       } else {
-        preHandlerCallback(null, request, reply);
+        preHandlerCallback(null, request2, reply);
       }
     }
-    function preHandlerCallback(err, request, reply) {
+    function preHandlerCallback(err, request2, reply) {
       if (reply.sent) return;
-      const context = request[kRouteContext];
+      const context = request2[kRouteContext];
       if (!channels.hasSubscribers || context[kFourOhFourContext] === null) {
-        preHandlerCallbackInner(err, request, reply);
+        preHandlerCallbackInner(err, request2, reply);
       } else {
         const store = {
-          request,
+          request: request2,
           reply,
           async: false,
           route: {
@@ -3129,11 +4226,11 @@ var require_handleRequest = __commonJS({
             method: context.config.method
           }
         };
-        channels.start.runStores(store, preHandlerCallbackInner, void 0, err, request, reply, store);
+        channels.start.runStores(store, preHandlerCallbackInner, void 0, err, request2, reply, store);
       }
     }
-    function preHandlerCallbackInner(err, request, reply, store) {
-      const context = request[kRouteContext];
+    function preHandlerCallbackInner(err, request2, reply, store) {
+      const context = request2[kRouteContext];
       try {
         if (err != null) {
           reply[kReplyIsError] = true;
@@ -3146,7 +4243,7 @@ var require_handleRequest = __commonJS({
         }
         let result;
         try {
-          result = context.handler(request, reply);
+          result = context.handler(request2, reply);
         } catch (err2) {
           if (store) {
             store.error = err2;
@@ -3168,7 +4265,7 @@ var require_handleRequest = __commonJS({
       }
     }
     module2.exports = handleRequest;
-    module2.exports[Symbol.for("internals")] = { handler, preHandlerCallback };
+    module2.exports[Symbol.for("internals")] = { handler: handler2, preHandlerCallback };
   }
 });
 
@@ -3176,15 +4273,15 @@ var require_handleRequest = __commonJS({
 var require_abstract_logging = __commonJS({
   "node_modules/.pnpm/abstract-logging@2.0.1/node_modules/abstract-logging/index.js"(exports2, module2) {
     "use strict";
-    function noop() {
+    function noop2() {
     }
     var proto = {
-      fatal: noop,
-      error: noop,
-      warn: noop,
-      info: noop,
-      debug: noop,
-      trace: noop
+      fatal: noop2,
+      error: noop2,
+      warn: noop2,
+      info: noop2,
+      debug: noop2,
+      trace: noop2
     };
     Object.defineProperty(module2, "exports", {
       get() {
@@ -3642,8 +4739,8 @@ var require_parse = __commonJS({
   "node_modules/.pnpm/fast-redact@3.5.0/node_modules/fast-redact/lib/parse.js"(exports2, module2) {
     "use strict";
     var rx = require_rx();
-    module2.exports = parse;
-    function parse({ paths }) {
+    module2.exports = parse2;
+    function parse2({ paths }) {
       const wildcards = [];
       var wcLen = 0;
       const secret = paths.reduce(function(o, strPath, ix) {
@@ -4090,15 +5187,15 @@ var require_fast_redact = __commonJS({
   "node_modules/.pnpm/fast-redact@3.5.0/node_modules/fast-redact/index.js"(exports2, module2) {
     "use strict";
     var validator = require_validator();
-    var parse = require_parse();
+    var parse2 = require_parse();
     var redactor = require_redactor();
     var restorer = require_restorer();
     var { groupRedact, nestedRedact } = require_modifiers();
     var state = require_state();
     var rx = require_rx();
     var validate = validator();
-    var noop = (o) => o;
-    noop.restore = noop;
+    var noop2 = (o) => o;
+    noop2.restore = noop2;
     var DEFAULT_CENSOR = "[REDACTED]";
     fastRedact.rx = rx;
     fastRedact.validator = validator;
@@ -4113,9 +5210,9 @@ var require_fast_redact = __commonJS({
       const censor = remove === true ? void 0 : "censor" in opts ? opts.censor : DEFAULT_CENSOR;
       const isCensorFct = typeof censor === "function";
       const censorFctTakesPath = isCensorFct && censor.length > 1;
-      if (paths.length === 0) return serialize || noop;
+      if (paths.length === 0) return serialize || noop2;
       validate({ paths, serialize, censor });
-      const { wildcards, wcLen, secret } = parse({ paths, censor });
+      const { wildcards, wcLen, secret } = parse2({ paths, censor });
       const compileRestore = restorer();
       const strict = "strict" in opts ? opts.strict : true;
       return redactor({ secret, wcLen, serialize, strict, isCensorFct, censorFctTakesPath }, state({
@@ -5098,7 +6195,7 @@ var require_on_exit_leak_free = __commonJS({
       registry.register(obj, ref);
       refs[event].push(ref);
     }
-    function register(obj, fn) {
+    function register2(obj, fn) {
       _register("exit", obj, fn);
     }
     function registerBeforeExit(obj, fn) {
@@ -5118,7 +6215,7 @@ var require_on_exit_leak_free = __commonJS({
       }
     }
     module2.exports = {
-      register,
+      register: register2,
       registerBeforeExit,
       unregister
     };
@@ -5688,7 +6785,7 @@ var require_transport = __commonJS({
     "use strict";
     var { createRequire } = require("module");
     var getCallers = require_caller();
-    var { join, isAbsolute, sep } = require("node:path");
+    var { join, isAbsolute, sep: sep2 } = require("node:path");
     var sleep = require_atomic_sleep();
     var onExit = require_on_exit_leak_free();
     var ThreadStream = require_thread_stream();
@@ -5796,7 +6893,7 @@ var require_transport = __commonJS({
         let fixTarget2;
         for (const filePath of callers) {
           try {
-            const context = filePath === "node:repl" ? process.cwd() + sep : filePath;
+            const context = filePath === "node:repl" ? process.cwd() + sep2 : filePath;
             fixTarget2 = createRequire(context).resolve(origin);
             break;
           } catch (err) {
@@ -5841,12 +6938,12 @@ var require_tools = __commonJS({
     } = require_symbols3();
     var { isMainThread } = require("worker_threads");
     var transport = require_transport();
-    function noop() {
+    function noop2() {
     }
-    function genLog(level, hook) {
-      if (!hook) return LOG;
+    function genLog(level, hook2) {
+      if (!hook2) return LOG;
       return function hookWrappedLog(...args) {
-        hook.call(this, args, LOG, level);
+        hook2.call(this, args, LOG, level);
       };
       function LOG(o, ...n) {
         if (typeof o === "object") {
@@ -6020,10 +7117,10 @@ var require_tools = __commonJS({
       return stream;
       function filterBrokenPipe(err) {
         if (err.code === "EPIPE") {
-          stream.write = noop;
-          stream.end = noop;
-          stream.flushSync = noop;
-          stream.destroy = noop;
+          stream.write = noop2;
+          stream.end = noop2;
+          stream.flushSync = noop2;
+          stream.destroy = noop2;
           return;
         }
         stream.removeListener("error", filterBrokenPipe);
@@ -6077,7 +7174,7 @@ var require_tools = __commonJS({
         }
         const { enabled, onChild } = opts;
         if (enabled === false) opts.level = "silent";
-        if (!onChild) opts.onChild = noop;
+        if (!onChild) opts.onChild = noop2;
         if (!stream) {
           if (!hasBeenTampered(process.stdout)) {
             stream = buildSafeSonicBoom({ fd: process.stdout.fd || 1 });
@@ -6118,7 +7215,7 @@ var require_tools = __commonJS({
       return destination;
     }
     module2.exports = {
-      noop,
+      noop: noop2,
       buildSafeSonicBoom,
       asChindings,
       asJson,
@@ -6166,11 +7263,11 @@ var require_levels = __commonJS({
       hooksSym,
       levelCompSym
     } = require_symbols3();
-    var { noop, genLog } = require_tools();
+    var { noop: noop2, genLog } = require_tools();
     var { DEFAULT_LEVELS, SORTING_ORDER } = require_constants();
     var levelMethods = {
-      fatal: (hook) => {
-        const logFatal = genLog(DEFAULT_LEVELS.fatal, hook);
+      fatal: (hook2) => {
+        const logFatal = genLog(DEFAULT_LEVELS.fatal, hook2);
         return function(...args) {
           const stream = this[streamSym];
           logFatal.call(this, ...args);
@@ -6182,11 +7279,11 @@ var require_levels = __commonJS({
           }
         };
       },
-      error: (hook) => genLog(DEFAULT_LEVELS.error, hook),
-      warn: (hook) => genLog(DEFAULT_LEVELS.warn, hook),
-      info: (hook) => genLog(DEFAULT_LEVELS.info, hook),
-      debug: (hook) => genLog(DEFAULT_LEVELS.debug, hook),
-      trace: (hook) => genLog(DEFAULT_LEVELS.trace, hook)
+      error: (hook2) => genLog(DEFAULT_LEVELS.error, hook2),
+      warn: (hook2) => genLog(DEFAULT_LEVELS.warn, hook2),
+      info: (hook2) => genLog(DEFAULT_LEVELS.info, hook2),
+      debug: (hook2) => genLog(DEFAULT_LEVELS.debug, hook2),
+      trace: (hook2) => genLog(DEFAULT_LEVELS.trace, hook2)
     };
     var nums = Object.keys(DEFAULT_LEVELS).reduce((o, k) => {
       o[DEFAULT_LEVELS[k]] = k;
@@ -6234,13 +7331,13 @@ var require_levels = __commonJS({
       const levelVal = this[levelValSym] = values[level];
       const useOnlyCustomLevelsVal = this[useOnlyCustomLevelsSym];
       const levelComparison = this[levelCompSym];
-      const hook = this[hooksSym].logMethod;
+      const hook2 = this[hooksSym].logMethod;
       for (const key in values) {
         if (levelComparison(values[key], levelVal) === false) {
-          this[key] = noop;
+          this[key] = noop2;
           continue;
         }
-        this[key] = isStandardLevel(key, useOnlyCustomLevelsVal) ? levelMethods[key](hook) : genLog(values[key], hook);
+        this[key] = isStandardLevel(key, useOnlyCustomLevelsVal) ? levelMethods[key](hook2) : genLog(values[key], hook2);
       }
       this.emit(
         "level-change",
@@ -6552,7 +7649,7 @@ var require_proto = __commonJS({
       }
       stream.write(streamWriteHook ? streamWriteHook(s) : s);
     }
-    function noop() {
+    function noop2() {
     }
     function flush(cb) {
       if (cb != null && typeof cb !== "function") {
@@ -6560,7 +7657,7 @@ var require_proto = __commonJS({
       }
       const stream = this[streamSym];
       if (typeof stream.flush === "function") {
-        stream.flush(cb || noop);
+        stream.flush(cb || noop2);
       } else if (cb) cb();
     }
   }
@@ -7339,7 +8436,7 @@ var require_pino = __commonJS({
       buildFormatters,
       stringify,
       normalizeDestFileDescriptor,
-      noop
+      noop: noop2
     } = require_tools();
     var { version } = require_meta();
     var {
@@ -7498,7 +8595,7 @@ var require_pino = __commonJS({
         [chindingsSym]: chindings,
         [formattersSym]: allFormatters,
         [hooksSym]: hooks,
-        silent: noop,
+        silent: noop2,
         onChild,
         [msgPrefixSym]: msgPrefix
       });
@@ -7694,11 +8791,11 @@ var require_rfdc = __commonJS({
       constructorHandlers.set(Map, (o, fn) => new Map(cloneArray(Array.from(o), fn)));
       constructorHandlers.set(Set, (o, fn) => new Set(cloneArray(Array.from(o), fn)));
       if (opts.constructorHandlers) {
-        for (const handler2 of opts.constructorHandlers) {
-          constructorHandlers.set(handler2[0], handler2[1]);
+        for (const handler3 of opts.constructorHandlers) {
+          constructorHandlers.set(handler3[0], handler3[1]);
         }
       }
-      let handler = null;
+      let handler2 = null;
       return opts.proto ? cloneProto : clone;
       function cloneArray(a, fn) {
         const keys = Object.keys(a);
@@ -7708,8 +8805,8 @@ var require_rfdc = __commonJS({
           const cur = a[k];
           if (typeof cur !== "object" || cur === null) {
             a2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            a2[k] = handler(cur, fn);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            a2[k] = handler2(cur, fn);
           } else if (ArrayBuffer.isView(cur)) {
             a2[k] = copyBuffer(cur);
           } else {
@@ -7721,8 +8818,8 @@ var require_rfdc = __commonJS({
       function clone(o) {
         if (typeof o !== "object" || o === null) return o;
         if (Array.isArray(o)) return cloneArray(o, clone);
-        if (o.constructor !== Object && (handler = constructorHandlers.get(o.constructor))) {
-          return handler(o, clone);
+        if (o.constructor !== Object && (handler2 = constructorHandlers.get(o.constructor))) {
+          return handler2(o, clone);
         }
         const o2 = {};
         for (const k in o) {
@@ -7730,8 +8827,8 @@ var require_rfdc = __commonJS({
           const cur = o[k];
           if (typeof cur !== "object" || cur === null) {
             o2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            o2[k] = handler(cur, clone);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            o2[k] = handler2(cur, clone);
           } else if (ArrayBuffer.isView(cur)) {
             o2[k] = copyBuffer(cur);
           } else {
@@ -7743,16 +8840,16 @@ var require_rfdc = __commonJS({
       function cloneProto(o) {
         if (typeof o !== "object" || o === null) return o;
         if (Array.isArray(o)) return cloneArray(o, cloneProto);
-        if (o.constructor !== Object && (handler = constructorHandlers.get(o.constructor))) {
-          return handler(o, cloneProto);
+        if (o.constructor !== Object && (handler2 = constructorHandlers.get(o.constructor))) {
+          return handler2(o, cloneProto);
         }
         const o2 = {};
         for (const k in o) {
           const cur = o[k];
           if (typeof cur !== "object" || cur === null) {
             o2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            o2[k] = handler(cur, cloneProto);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            o2[k] = handler2(cur, cloneProto);
           } else if (ArrayBuffer.isView(cur)) {
             o2[k] = copyBuffer(cur);
           } else {
@@ -7770,11 +8867,11 @@ var require_rfdc = __commonJS({
       constructorHandlers.set(Map, (o, fn) => new Map(cloneArray(Array.from(o), fn)));
       constructorHandlers.set(Set, (o, fn) => new Set(cloneArray(Array.from(o), fn)));
       if (opts.constructorHandlers) {
-        for (const handler2 of opts.constructorHandlers) {
-          constructorHandlers.set(handler2[0], handler2[1]);
+        for (const handler3 of opts.constructorHandlers) {
+          constructorHandlers.set(handler3[0], handler3[1]);
         }
       }
-      let handler = null;
+      let handler2 = null;
       return opts.proto ? cloneProto : clone;
       function cloneArray(a, fn) {
         const keys = Object.keys(a);
@@ -7784,8 +8881,8 @@ var require_rfdc = __commonJS({
           const cur = a[k];
           if (typeof cur !== "object" || cur === null) {
             a2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            a2[k] = handler(cur, fn);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            a2[k] = handler2(cur, fn);
           } else if (ArrayBuffer.isView(cur)) {
             a2[k] = copyBuffer(cur);
           } else {
@@ -7802,8 +8899,8 @@ var require_rfdc = __commonJS({
       function clone(o) {
         if (typeof o !== "object" || o === null) return o;
         if (Array.isArray(o)) return cloneArray(o, clone);
-        if (o.constructor !== Object && (handler = constructorHandlers.get(o.constructor))) {
-          return handler(o, clone);
+        if (o.constructor !== Object && (handler2 = constructorHandlers.get(o.constructor))) {
+          return handler2(o, clone);
         }
         const o2 = {};
         refs.push(o);
@@ -7813,8 +8910,8 @@ var require_rfdc = __commonJS({
           const cur = o[k];
           if (typeof cur !== "object" || cur === null) {
             o2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            o2[k] = handler(cur, clone);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            o2[k] = handler2(cur, clone);
           } else if (ArrayBuffer.isView(cur)) {
             o2[k] = copyBuffer(cur);
           } else {
@@ -7833,8 +8930,8 @@ var require_rfdc = __commonJS({
       function cloneProto(o) {
         if (typeof o !== "object" || o === null) return o;
         if (Array.isArray(o)) return cloneArray(o, cloneProto);
-        if (o.constructor !== Object && (handler = constructorHandlers.get(o.constructor))) {
-          return handler(o, cloneProto);
+        if (o.constructor !== Object && (handler2 = constructorHandlers.get(o.constructor))) {
+          return handler2(o, cloneProto);
         }
         const o2 = {};
         refs.push(o);
@@ -7843,8 +8940,8 @@ var require_rfdc = __commonJS({
           const cur = o[k];
           if (typeof cur !== "object" || cur === null) {
             o2[k] = cur;
-          } else if (cur.constructor !== Object && (handler = constructorHandlers.get(cur.constructor))) {
-            o2[k] = handler(cur, cloneProto);
+          } else if (cur.constructor !== Object && (handler2 = constructorHandlers.get(cur.constructor))) {
+            o2[k] = handler2(cur, cloneProto);
           } else if (ArrayBuffer.isView(cur)) {
             o2[k] = copyBuffer(cur);
           } else {
@@ -8303,7 +9400,7 @@ var require_error_handler = __commonJS({
         reply.send(err);
       }
     }
-    function defaultErrorHandler(error, request, reply) {
+    function defaultErrorHandler(error, request2, reply) {
       setErrorHeaders(error, reply);
       if (!reply[kReplyHasStatusCode] || reply.statusCode === 200) {
         const statusCode = error.statusCode || error.status;
@@ -8319,7 +9416,7 @@ var require_error_handler = __commonJS({
       } else {
         if (!reply.log[kDisableRequestLogging]) {
           reply.log.error(
-            { req: request, res: reply, err: error },
+            { req: request2, res: reply, err: error },
             error && error.message
           );
         }
@@ -8409,7 +9506,7 @@ var require_decorate = __commonJS({
       FST_ERR_DEC_DEPENDENCY_INVALID_TYPE,
       FST_ERR_DEC_UNDECLARED
     } = require_errors2();
-    function decorate(instance, name, fn, dependencies) {
+    function decorate2(instance, name, fn, dependencies) {
       if (Object.hasOwn(instance, name)) {
         throw new FST_ERR_DEC_ALREADY_PRESENT(name);
       }
@@ -8457,7 +9554,7 @@ var require_decorate = __commonJS({
     }
     function decorateFastify(name, fn, dependencies) {
       assertNotStarted(this, name);
-      decorate(this, name, fn, dependencies);
+      decorate2(this, name, fn, dependencies);
       return this;
     }
     function checkExistence(instance, name) {
@@ -8582,13 +9679,13 @@ var require_reply = __commonJS({
     } = require_errors2();
     var decorators = require_decorate();
     var toString = Object.prototype.toString;
-    function Reply(res, request, log) {
+    function Reply(res, request2, log) {
       this.raw = res;
       this[kReplySerializer] = null;
       this[kReplyErrorHandlerCalled] = false;
       this[kReplyIsError] = false;
       this[kReplyIsRunningOnErrorHook] = false;
-      this.request = request;
+      this.request = request2;
       this[kReplyHeaders] = {};
       this[kReplyTrailers] = null;
       this[kReplyHasStatusCode] = false;
@@ -8815,8 +9912,8 @@ var require_reply = __commonJS({
       return serialize2;
     };
     Reply.prototype.compileSerializationSchema = function(schema, httpStatus = null, contentType = null) {
-      const { request } = this;
-      const { method, url } = request;
+      const { request: request2 } = this;
+      const { method, url } = request2;
       if (this[kRouteContext][kReplyCacheSerializeFns]?.has(schema)) {
         return this[kRouteContext][kReplyCacheSerializeFns].get(schema);
       }
@@ -8965,7 +10062,7 @@ var require_reply = __commonJS({
         onSendEnd(reply, payload);
       }
     }
-    function wrapOnSendEnd(err, request, reply, payload) {
+    function wrapOnSendEnd(err, request2, reply, payload) {
       if (err != null) {
         onErrorHook(reply, err);
       } else {
@@ -9028,7 +10125,7 @@ var require_reply = __commonJS({
         safeWriteHead(reply, statusCode);
         sendTrailer(void 0, res, reply);
         if (typeof payload.resume === "function") {
-          payload.on("error", noop);
+          payload.on("error", noop2);
           payload.resume();
         }
         return;
@@ -9097,7 +10194,7 @@ var require_reply = __commonJS({
           if (typeof payload.destroy === "function") {
             payload.destroy();
           } else if (typeof payload.close === "function") {
-            payload.close(noop);
+            payload.close(noop2);
           } else if (typeof payload.abort === "function") {
             payload.abort();
           } else {
@@ -9185,7 +10282,7 @@ var require_reply = __commonJS({
       reply.raw.on("finish", onResFinished);
       reply.raw.on("error", onResFinished);
     }
-    function onResponseCallback(err, request, reply) {
+    function onResponseCallback(err, request2, reply) {
       if (reply.log[kDisableRequestLogging]) {
         return;
       }
@@ -9205,13 +10302,13 @@ var require_reply = __commonJS({
     }
     function buildReply(R) {
       const props = R.props.slice();
-      function _Reply(res, request, log) {
+      function _Reply(res, request2, log) {
         this.raw = res;
         this[kReplyIsError] = false;
         this[kReplyErrorHandlerCalled] = false;
         this[kReplyHijacked] = false;
         this[kReplySerializer] = null;
-        this.request = request;
+        this.request = request2;
         this[kReplyHeaders] = {};
         this[kReplyTrailers] = null;
         this[kReplyStartTime] = void 0;
@@ -9254,7 +10351,7 @@ var require_reply = __commonJS({
       }
       return JSON.stringify(data);
     }
-    function noop() {
+    function noop2() {
     }
     module2.exports = Reply;
     module2.exports.buildReply = buildReply;
@@ -9278,10 +10375,10 @@ var require_forwarded = __commonJS({
         const remote = header.trim();
         return remote.length ? [socketAddr, remote] : [socketAddr];
       } else {
-        return parse(header, socketAddr);
+        return parse2(header, socketAddr);
       }
     }
-    function parse(header, socketAddr) {
+    function parse2(header, socketAddr) {
       const result = [socketAddr];
       let end = header.length;
       let start2 = end;
@@ -10372,8 +11469,8 @@ var require_request = __commonJS({
       });
       return _Request;
     }
-    function assertsRequestDecoration(request, name) {
-      if (!decorators.hasKey(request, name) && !decorators.exist(request, name)) {
+    function assertsRequestDecoration(request2, name) {
+      if (!decorators.hasKey(request2, name) && !decorators.exist(request2, name)) {
         throw new FST_ERR_DEC_UNDECLARED(name, "request");
       }
     }
@@ -10579,7 +11676,7 @@ var require_context = __commonJS({
     } = require_symbols2();
     function Context({
       schema,
-      handler,
+      handler: handler2,
       config: config2,
       requestIdLogLabel,
       childLoggerFactory,
@@ -10598,7 +11695,7 @@ var require_context = __commonJS({
       isFastify
     }) {
       this.schema = schema;
-      this.handler = handler;
+      this.handler = handler2;
       this.Reply = server2[kReply];
       this.Request = server2[kRequest];
       this.contentTypeParser = server2[kContentTypeParser];
@@ -10643,689 +11740,6 @@ var require_context = __commonJS({
       return new Error(text.slice(0, -separator.length));
     }
     module2.exports = Context;
-  }
-});
-
-// node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.cjs
-var require_toad_cache = __commonJS({
-  "node_modules/.pnpm/toad-cache@3.7.0/node_modules/toad-cache/dist/toad-cache.cjs"(exports2) {
-    "use strict";
-    var FifoMap = class {
-      constructor(max = 1e3, ttlInMsecs = 0) {
-        if (isNaN(max) || max < 0) {
-          throw new Error("Invalid max value");
-        }
-        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
-          throw new Error("Invalid ttl value");
-        }
-        this.first = null;
-        this.items = /* @__PURE__ */ new Map();
-        this.last = null;
-        this.max = max;
-        this.ttl = ttlInMsecs;
-      }
-      get size() {
-        return this.items.size;
-      }
-      clear() {
-        this.items = /* @__PURE__ */ new Map();
-        this.first = null;
-        this.last = null;
-      }
-      delete(key) {
-        if (this.items.has(key)) {
-          const deletedItem = this.items.get(key);
-          this.items.delete(key);
-          if (deletedItem.prev !== null) {
-            deletedItem.prev.next = deletedItem.next;
-          }
-          if (deletedItem.next !== null) {
-            deletedItem.next.prev = deletedItem.prev;
-          }
-          if (this.first === deletedItem) {
-            this.first = deletedItem.next;
-          }
-          if (this.last === deletedItem) {
-            this.last = deletedItem.prev;
-          }
-        }
-      }
-      deleteMany(keys) {
-        for (var i = 0; i < keys.length; i++) {
-          this.delete(keys[i]);
-        }
-      }
-      evict() {
-        if (this.size > 0) {
-          const item = this.first;
-          this.items.delete(item.key);
-          if (this.size === 0) {
-            this.first = null;
-            this.last = null;
-          } else {
-            this.first = item.next;
-            this.first.prev = null;
-          }
-        }
-      }
-      expiresAt(key) {
-        if (this.items.has(key)) {
-          return this.items.get(key).expiry;
-        }
-      }
-      get(key) {
-        if (this.items.has(key)) {
-          const item = this.items.get(key);
-          if (this.ttl > 0 && item.expiry <= Date.now()) {
-            this.delete(key);
-            return;
-          }
-          return item.value;
-        }
-      }
-      getMany(keys) {
-        const result = [];
-        for (var i = 0; i < keys.length; i++) {
-          result.push(this.get(keys[i]));
-        }
-        return result;
-      }
-      keys() {
-        return this.items.keys();
-      }
-      set(key, value) {
-        if (this.items.has(key)) {
-          const item2 = this.items.get(key);
-          item2.value = value;
-          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-          return;
-        }
-        if (this.max > 0 && this.size === this.max) {
-          this.evict();
-        }
-        const item = {
-          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-          key,
-          prev: this.last,
-          next: null,
-          value
-        };
-        this.items.set(key, item);
-        if (this.size === 1) {
-          this.first = item;
-        } else {
-          this.last.next = item;
-        }
-        this.last = item;
-      }
-    };
-    var LruMap = class {
-      constructor(max = 1e3, ttlInMsecs = 0) {
-        if (isNaN(max) || max < 0) {
-          throw new Error("Invalid max value");
-        }
-        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
-          throw new Error("Invalid ttl value");
-        }
-        this.first = null;
-        this.items = /* @__PURE__ */ new Map();
-        this.last = null;
-        this.max = max;
-        this.ttl = ttlInMsecs;
-      }
-      get size() {
-        return this.items.size;
-      }
-      bumpLru(item) {
-        if (this.last === item) {
-          return;
-        }
-        const last = this.last;
-        const next = item.next;
-        const prev = item.prev;
-        if (this.first === item) {
-          this.first = next;
-        }
-        item.next = null;
-        item.prev = last;
-        last.next = item;
-        if (prev !== null) {
-          prev.next = next;
-        }
-        if (next !== null) {
-          next.prev = prev;
-        }
-        this.last = item;
-      }
-      clear() {
-        this.items = /* @__PURE__ */ new Map();
-        this.first = null;
-        this.last = null;
-      }
-      delete(key) {
-        if (this.items.has(key)) {
-          const item = this.items.get(key);
-          this.items.delete(key);
-          if (item.prev !== null) {
-            item.prev.next = item.next;
-          }
-          if (item.next !== null) {
-            item.next.prev = item.prev;
-          }
-          if (this.first === item) {
-            this.first = item.next;
-          }
-          if (this.last === item) {
-            this.last = item.prev;
-          }
-        }
-      }
-      deleteMany(keys) {
-        for (var i = 0; i < keys.length; i++) {
-          this.delete(keys[i]);
-        }
-      }
-      evict() {
-        if (this.size > 0) {
-          const item = this.first;
-          this.items.delete(item.key);
-          if (this.size === 0) {
-            this.first = null;
-            this.last = null;
-          } else {
-            this.first = item.next;
-            this.first.prev = null;
-          }
-        }
-      }
-      expiresAt(key) {
-        if (this.items.has(key)) {
-          return this.items.get(key).expiry;
-        }
-      }
-      get(key) {
-        if (this.items.has(key)) {
-          const item = this.items.get(key);
-          if (this.ttl > 0 && item.expiry <= Date.now()) {
-            this.delete(key);
-            return;
-          }
-          this.bumpLru(item);
-          return item.value;
-        }
-      }
-      getMany(keys) {
-        const result = [];
-        for (var i = 0; i < keys.length; i++) {
-          result.push(this.get(keys[i]));
-        }
-        return result;
-      }
-      keys() {
-        return this.items.keys();
-      }
-      set(key, value) {
-        if (this.items.has(key)) {
-          const item2 = this.items.get(key);
-          item2.value = value;
-          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-          if (this.last !== item2) {
-            this.bumpLru(item2);
-          }
-          return;
-        }
-        if (this.max > 0 && this.size === this.max) {
-          this.evict();
-        }
-        const item = {
-          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-          key,
-          prev: this.last,
-          next: null,
-          value
-        };
-        this.items.set(key, item);
-        if (this.size === 1) {
-          this.first = item;
-        } else {
-          this.last.next = item;
-        }
-        this.last = item;
-      }
-    };
-    var LruObject = class {
-      constructor(max = 1e3, ttlInMsecs = 0) {
-        if (isNaN(max) || max < 0) {
-          throw new Error("Invalid max value");
-        }
-        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
-          throw new Error("Invalid ttl value");
-        }
-        this.first = null;
-        this.items = /* @__PURE__ */ Object.create(null);
-        this.last = null;
-        this.size = 0;
-        this.max = max;
-        this.ttl = ttlInMsecs;
-      }
-      bumpLru(item) {
-        if (this.last === item) {
-          return;
-        }
-        const last = this.last;
-        const next = item.next;
-        const prev = item.prev;
-        if (this.first === item) {
-          this.first = next;
-        }
-        item.next = null;
-        item.prev = last;
-        last.next = item;
-        if (prev !== null) {
-          prev.next = next;
-        }
-        if (next !== null) {
-          next.prev = prev;
-        }
-        this.last = item;
-      }
-      clear() {
-        this.items = /* @__PURE__ */ Object.create(null);
-        this.first = null;
-        this.last = null;
-        this.size = 0;
-      }
-      delete(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item = this.items[key];
-          delete this.items[key];
-          this.size--;
-          if (item.prev !== null) {
-            item.prev.next = item.next;
-          }
-          if (item.next !== null) {
-            item.next.prev = item.prev;
-          }
-          if (this.first === item) {
-            this.first = item.next;
-          }
-          if (this.last === item) {
-            this.last = item.prev;
-          }
-        }
-      }
-      deleteMany(keys) {
-        for (var i = 0; i < keys.length; i++) {
-          this.delete(keys[i]);
-        }
-      }
-      evict() {
-        if (this.size > 0) {
-          const item = this.first;
-          delete this.items[item.key];
-          if (--this.size === 0) {
-            this.first = null;
-            this.last = null;
-          } else {
-            this.first = item.next;
-            this.first.prev = null;
-          }
-        }
-      }
-      expiresAt(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          return this.items[key].expiry;
-        }
-      }
-      get(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item = this.items[key];
-          if (this.ttl > 0 && item.expiry <= Date.now()) {
-            this.delete(key);
-            return;
-          }
-          this.bumpLru(item);
-          return item.value;
-        }
-      }
-      getMany(keys) {
-        const result = [];
-        for (var i = 0; i < keys.length; i++) {
-          result.push(this.get(keys[i]));
-        }
-        return result;
-      }
-      keys() {
-        return Object.keys(this.items);
-      }
-      set(key, value) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item2 = this.items[key];
-          item2.value = value;
-          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-          if (this.last !== item2) {
-            this.bumpLru(item2);
-          }
-          return;
-        }
-        if (this.max > 0 && this.size === this.max) {
-          this.evict();
-        }
-        const item = {
-          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-          key,
-          prev: this.last,
-          next: null,
-          value
-        };
-        this.items[key] = item;
-        if (++this.size === 1) {
-          this.first = item;
-        } else {
-          this.last.next = item;
-        }
-        this.last = item;
-      }
-    };
-    var HitStatisticsRecord = class {
-      constructor() {
-        this.records = {};
-      }
-      initForCache(cacheId, currentTimeStamp) {
-        this.records[cacheId] = {
-          [currentTimeStamp]: {
-            cacheSize: 0,
-            hits: 0,
-            falsyHits: 0,
-            emptyHits: 0,
-            misses: 0,
-            expirations: 0,
-            evictions: 0,
-            invalidateOne: 0,
-            invalidateAll: 0,
-            sets: 0
-          }
-        };
-      }
-      resetForCache(cacheId) {
-        for (let key of Object.keys(this.records[cacheId])) {
-          this.records[cacheId][key] = {
-            cacheSize: 0,
-            hits: 0,
-            falsyHits: 0,
-            emptyHits: 0,
-            misses: 0,
-            expirations: 0,
-            evictions: 0,
-            invalidateOne: 0,
-            invalidateAll: 0,
-            sets: 0
-          };
-        }
-      }
-      getStatistics() {
-        return this.records;
-      }
-    };
-    function getTimestamp(date) {
-      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
-    }
-    var HitStatistics = class {
-      constructor(cacheId, statisticTtlInHours, globalStatisticsRecord) {
-        this.cacheId = cacheId;
-        this.statisticTtlInHours = statisticTtlInHours;
-        this.collectionStart = /* @__PURE__ */ new Date();
-        this.currentTimeStamp = getTimestamp(this.collectionStart);
-        this.records = globalStatisticsRecord || new HitStatisticsRecord();
-        this.records.initForCache(this.cacheId, this.currentTimeStamp);
-      }
-      get currentRecord() {
-        if (!this.records.records[this.cacheId][this.currentTimeStamp]) {
-          this.records.records[this.cacheId][this.currentTimeStamp] = {
-            cacheSize: 0,
-            hits: 0,
-            falsyHits: 0,
-            emptyHits: 0,
-            misses: 0,
-            expirations: 0,
-            evictions: 0,
-            sets: 0,
-            invalidateOne: 0,
-            invalidateAll: 0
-          };
-        }
-        return this.records.records[this.cacheId][this.currentTimeStamp];
-      }
-      hoursPassed() {
-        return (Date.now() - this.collectionStart) / 1e3 / 60 / 60;
-      }
-      addHit() {
-        this.archiveIfNeeded();
-        this.currentRecord.hits++;
-      }
-      addFalsyHit() {
-        this.archiveIfNeeded();
-        this.currentRecord.falsyHits++;
-      }
-      addEmptyHit() {
-        this.archiveIfNeeded();
-        this.currentRecord.emptyHits++;
-      }
-      addMiss() {
-        this.archiveIfNeeded();
-        this.currentRecord.misses++;
-      }
-      addEviction() {
-        this.archiveIfNeeded();
-        this.currentRecord.evictions++;
-      }
-      setCacheSize(currentSize) {
-        this.archiveIfNeeded();
-        this.currentRecord.cacheSize = currentSize;
-      }
-      addExpiration() {
-        this.archiveIfNeeded();
-        this.currentRecord.expirations++;
-      }
-      addSet() {
-        this.archiveIfNeeded();
-        this.currentRecord.sets++;
-      }
-      addInvalidateOne() {
-        this.archiveIfNeeded();
-        this.currentRecord.invalidateOne++;
-      }
-      addInvalidateAll() {
-        this.archiveIfNeeded();
-        this.currentRecord.invalidateAll++;
-      }
-      getStatistics() {
-        return this.records.getStatistics();
-      }
-      archiveIfNeeded() {
-        if (this.hoursPassed() >= this.statisticTtlInHours) {
-          this.collectionStart = /* @__PURE__ */ new Date();
-          this.currentTimeStamp = getTimestamp(this.collectionStart);
-          this.records.initForCache(this.cacheId, this.currentTimeStamp);
-        }
-      }
-    };
-    var LruObjectHitStatistics = class extends LruObject {
-      constructor(max, ttlInMsecs, cacheId, globalStatisticsRecord, statisticTtlInHours) {
-        super(max || 1e3, ttlInMsecs || 0);
-        if (!cacheId) {
-          throw new Error("Cache id is mandatory");
-        }
-        this.hitStatistics = new HitStatistics(
-          cacheId,
-          statisticTtlInHours !== void 0 ? statisticTtlInHours : 24,
-          globalStatisticsRecord
-        );
-      }
-      getStatistics() {
-        return this.hitStatistics.getStatistics();
-      }
-      set(key, value) {
-        super.set(key, value);
-        this.hitStatistics.addSet();
-        this.hitStatistics.setCacheSize(this.size);
-      }
-      evict() {
-        super.evict();
-        this.hitStatistics.addEviction();
-        this.hitStatistics.setCacheSize(this.size);
-      }
-      delete(key, isExpiration = false) {
-        super.delete(key);
-        if (!isExpiration) {
-          this.hitStatistics.addInvalidateOne();
-        }
-        this.hitStatistics.setCacheSize(this.size);
-      }
-      clear() {
-        super.clear();
-        this.hitStatistics.addInvalidateAll();
-        this.hitStatistics.setCacheSize(this.size);
-      }
-      get(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item = this.items[key];
-          if (this.ttl > 0 && item.expiry <= Date.now()) {
-            this.delete(key, true);
-            this.hitStatistics.addExpiration();
-            return;
-          }
-          this.bumpLru(item);
-          if (!item.value) {
-            this.hitStatistics.addFalsyHit();
-          }
-          if (item.value === void 0 || item.value === null || item.value === "") {
-            this.hitStatistics.addEmptyHit();
-          }
-          this.hitStatistics.addHit();
-          return item.value;
-        }
-        this.hitStatistics.addMiss();
-      }
-    };
-    var FifoObject = class {
-      constructor(max = 1e3, ttlInMsecs = 0) {
-        if (isNaN(max) || max < 0) {
-          throw new Error("Invalid max value");
-        }
-        if (isNaN(ttlInMsecs) || ttlInMsecs < 0) {
-          throw new Error("Invalid ttl value");
-        }
-        this.first = null;
-        this.items = /* @__PURE__ */ Object.create(null);
-        this.last = null;
-        this.size = 0;
-        this.max = max;
-        this.ttl = ttlInMsecs;
-      }
-      clear() {
-        this.items = /* @__PURE__ */ Object.create(null);
-        this.first = null;
-        this.last = null;
-        this.size = 0;
-      }
-      delete(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const deletedItem = this.items[key];
-          delete this.items[key];
-          this.size--;
-          if (deletedItem.prev !== null) {
-            deletedItem.prev.next = deletedItem.next;
-          }
-          if (deletedItem.next !== null) {
-            deletedItem.next.prev = deletedItem.prev;
-          }
-          if (this.first === deletedItem) {
-            this.first = deletedItem.next;
-          }
-          if (this.last === deletedItem) {
-            this.last = deletedItem.prev;
-          }
-        }
-      }
-      deleteMany(keys) {
-        for (var i = 0; i < keys.length; i++) {
-          this.delete(keys[i]);
-        }
-      }
-      evict() {
-        if (this.size > 0) {
-          const item = this.first;
-          delete this.items[item.key];
-          if (--this.size === 0) {
-            this.first = null;
-            this.last = null;
-          } else {
-            this.first = item.next;
-            this.first.prev = null;
-          }
-        }
-      }
-      expiresAt(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          return this.items[key].expiry;
-        }
-      }
-      get(key) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item = this.items[key];
-          if (this.ttl > 0 && item.expiry <= Date.now()) {
-            this.delete(key);
-            return;
-          }
-          return item.value;
-        }
-      }
-      getMany(keys) {
-        const result = [];
-        for (var i = 0; i < keys.length; i++) {
-          result.push(this.get(keys[i]));
-        }
-        return result;
-      }
-      keys() {
-        return Object.keys(this.items);
-      }
-      set(key, value) {
-        if (Object.prototype.hasOwnProperty.call(this.items, key)) {
-          const item2 = this.items[key];
-          item2.value = value;
-          item2.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-          return;
-        }
-        if (this.max > 0 && this.size === this.max) {
-          this.evict();
-        }
-        const item = {
-          expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-          key,
-          prev: this.last,
-          next: null,
-          value
-        };
-        this.items[key] = item;
-        if (++this.size === 1) {
-          this.first = item;
-        } else {
-          this.last.next = item;
-        }
-        this.last = item;
-      }
-    };
-    exports2.Fifo = FifoObject;
-    exports2.FifoMap = FifoMap;
-    exports2.FifoObject = FifoObject;
-    exports2.HitStatisticsRecord = HitStatisticsRecord;
-    exports2.Lru = LruObject;
-    exports2.LruHitStatistics = LruObjectHitStatistics;
-    exports2.LruMap = LruMap;
-    exports2.LruObject = LruObject;
-    exports2.LruObjectHitStatistics = LruObjectHitStatistics;
   }
 });
 
@@ -11405,7 +11819,7 @@ var require_secure_json_parse = __commonJS({
       }
       return obj;
     }
-    function parse(text, reviver, options) {
+    function parse2(text, reviver, options) {
       const { stackTraceLimit } = Error;
       Error.stackTraceLimit = 0;
       try {
@@ -11414,7 +11828,7 @@ var require_secure_json_parse = __commonJS({
         Error.stackTraceLimit = stackTraceLimit;
       }
     }
-    function safeParse(text, reviver) {
+    function safeParse2(text, reviver) {
       const { stackTraceLimit } = Error;
       Error.stackTraceLimit = 0;
       try {
@@ -11425,10 +11839,10 @@ var require_secure_json_parse = __commonJS({
         Error.stackTraceLimit = stackTraceLimit;
       }
     }
-    module2.exports = parse;
-    module2.exports.default = parse;
-    module2.exports.parse = parse;
-    module2.exports.safeParse = safeParse;
+    module2.exports = parse2;
+    module2.exports.default = parse2;
+    module2.exports.parse = parse2;
+    module2.exports.safeParse = safeParse2;
     module2.exports.scan = filter;
   }
 });
@@ -11575,27 +11989,27 @@ var require_contentTypeParser = __commonJS({
       }
       return removed || idx > -1;
     };
-    ContentTypeParser.prototype.run = function(contentType, handler, request, reply) {
+    ContentTypeParser.prototype.run = function(contentType, handler2, request2, reply) {
       const parser = this.getParser(contentType);
       if (parser === void 0) {
-        if (request.is404) {
-          handler(request, reply);
+        if (request2.is404) {
+          handler2(request2, reply);
         } else {
           reply.send(new FST_ERR_CTP_INVALID_MEDIA_TYPE(contentType || void 0));
         }
         return;
       }
-      const resource = new AsyncResource("content-type-parser:run", request);
+      const resource = new AsyncResource("content-type-parser:run", request2);
       if (parser.asString === true || parser.asBuffer === true) {
         rawBody(
-          request,
+          request2,
           reply,
           reply[kRouteContext]._parserOptions,
           parser,
           done
         );
       } else {
-        const result = parser.fn(request, request[kRequestPayloadStream], done);
+        const result = parser.fn(request2, request2[kRequestPayloadStream], done);
         if (result && typeof result.then === "function") {
           result.then((body) => done(null, body), done);
         }
@@ -11607,16 +12021,16 @@ var require_contentTypeParser = __commonJS({
             reply[kReplyIsError] = true;
             reply.send(error);
           } else {
-            request.body = body;
-            handler(request, reply);
+            request2.body = body;
+            handler2(request2, reply);
           }
         });
       }
     };
-    function rawBody(request, reply, options, parser, done) {
+    function rawBody(request2, reply, options, parser, done) {
       const asString = parser.asString;
       const limit = options.limit === null ? parser.bodyLimit : options.limit;
-      const contentLength = Number(request.headers["content-length"]);
+      const contentLength = Number(request2.headers["content-length"]);
       if (contentLength > limit) {
         reply.header("connection", "close");
         reply.send(new FST_ERR_CTP_BODY_TOO_LARGE());
@@ -11624,7 +12038,7 @@ var require_contentTypeParser = __commonJS({
       }
       let receivedLength = 0;
       let body = asString === true ? "" : [];
-      const payload = request[kRequestPayloadStream] || request.raw;
+      const payload = request2[kRequestPayloadStream] || request2.raw;
       if (asString === true) {
         payload.setEncoding("utf8");
       }
@@ -11671,7 +12085,7 @@ var require_contentTypeParser = __commonJS({
         if (asString === false) {
           body = Buffer.concat(body);
         }
-        const result = parser.fn(request, body, done);
+        const result = parser.fn(request2, body, done);
         if (result && typeof result.then === "function") {
           result.then((body2) => done(null, body2), done);
         }
@@ -15578,22 +15992,22 @@ var require_fast_uri = __commonJS({
     var SCHEMES = require_schemes();
     function normalize(uri, options) {
       if (typeof uri === "string") {
-        uri = serialize(parse(uri, options), options);
+        uri = serialize(parse2(uri, options), options);
       } else if (typeof uri === "object") {
-        uri = parse(serialize(uri, options), options);
+        uri = parse2(serialize(uri, options), options);
       }
       return uri;
     }
     function resolve(baseURI, relativeURI, options) {
       const schemelessOptions = Object.assign({ scheme: "null" }, options);
-      const resolved = resolveComponents(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true);
+      const resolved = resolveComponents(parse2(baseURI, schemelessOptions), parse2(relativeURI, schemelessOptions), schemelessOptions, true);
       return serialize(resolved, { ...schemelessOptions, skipEscape: true });
     }
     function resolveComponents(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse(serialize(base, options), options);
-        relative = parse(serialize(relative, options), options);
+        base = parse2(serialize(base, options), options);
+        relative = parse2(serialize(relative, options), options);
       }
       options = options || {};
       if (!options.tolerant && relative.scheme) {
@@ -15645,13 +16059,13 @@ var require_fast_uri = __commonJS({
     function equal(uriA, uriB, options) {
       if (typeof uriA === "string") {
         uriA = unescape(uriA);
-        uriA = serialize(normalizeComponentEncoding(parse(uriA, options), true), { ...options, skipEscape: true });
+        uriA = serialize(normalizeComponentEncoding(parse2(uriA, options), true), { ...options, skipEscape: true });
       } else if (typeof uriA === "object") {
         uriA = serialize(normalizeComponentEncoding(uriA, true), { ...options, skipEscape: true });
       }
       if (typeof uriB === "string") {
         uriB = unescape(uriB);
-        uriB = serialize(normalizeComponentEncoding(parse(uriB, options), true), { ...options, skipEscape: true });
+        uriB = serialize(normalizeComponentEncoding(parse2(uriB, options), true), { ...options, skipEscape: true });
       } else if (typeof uriB === "object") {
         uriB = serialize(normalizeComponentEncoding(uriB, true), { ...options, skipEscape: true });
       }
@@ -15731,7 +16145,7 @@ var require_fast_uri = __commonJS({
       return false;
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
-    function parse(uri, opts) {
+    function parse2(uri, opts) {
       const options = Object.assign({}, opts);
       const parsed = {
         scheme: void 0,
@@ -15819,7 +16233,7 @@ var require_fast_uri = __commonJS({
       resolveComponents,
       equal,
       serialize,
-      parse
+      parse: parse2
     };
     module2.exports = fastUri;
     module2.exports.default = fastUri;
@@ -22683,9 +23097,9 @@ var require_parse2 = __commonJS({
         const parseFuncCode = gen.toString();
         sourceCode = `${gen.scopeRefs(names_1.default.scope)}return ${parseFuncCode}`;
         const makeParse = new Function(`${names_1.default.scope}`, sourceCode);
-        const parse = makeParse(this.scope.get());
-        this.scope.value(parseName, { ref: parse });
-        sch.parse = parse;
+        const parse2 = makeParse(this.scope.get());
+        this.scope.value(parseName, { ref: parse2 });
+        sch.parse = parse2;
       } catch (e) {
         if (sourceCode)
           this.logger.error("Error compiling parser, function code:", sourceCode);
@@ -23891,7 +24305,7 @@ var require_parse3 = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/parse.js"(exports2, module2) {
     "use strict";
     var SemVer = require_semver();
-    var parse = (version, options, throwErrors = false) => {
+    var parse2 = (version, options, throwErrors = false) => {
       if (version instanceof SemVer) {
         return version;
       }
@@ -23904,7 +24318,7 @@ var require_parse3 = __commonJS({
         throw er;
       }
     };
-    module2.exports = parse;
+    module2.exports = parse2;
   }
 });
 
@@ -23912,9 +24326,9 @@ var require_parse3 = __commonJS({
 var require_valid = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/valid.js"(exports2, module2) {
     "use strict";
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var valid = (version, options) => {
-      const v = parse(version, options);
+      const v = parse2(version, options);
       return v ? v.version : null;
     };
     module2.exports = valid;
@@ -23925,9 +24339,9 @@ var require_valid = __commonJS({
 var require_clean = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/clean.js"(exports2, module2) {
     "use strict";
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var clean = (version, options) => {
-      const s = parse(version.trim().replace(/^[=v]+/, ""), options);
+      const s = parse2(version.trim().replace(/^[=v]+/, ""), options);
       return s ? s.version : null;
     };
     module2.exports = clean;
@@ -23962,10 +24376,10 @@ var require_inc = __commonJS({
 var require_diff = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/diff.js"(exports2, module2) {
     "use strict";
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var diff = (version1, version2) => {
-      const v1 = parse(version1, null, true);
-      const v2 = parse(version2, null, true);
+      const v1 = parse2(version1, null, true);
+      const v2 = parse2(version2, null, true);
       const comparison = v1.compare(v2);
       if (comparison === 0) {
         return null;
@@ -24036,9 +24450,9 @@ var require_patch = __commonJS({
 var require_prerelease = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/prerelease.js"(exports2, module2) {
     "use strict";
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var prerelease = (version, options) => {
-      const parsed = parse(version, options);
+      const parsed = parse2(version, options);
       return parsed && parsed.prerelease.length ? parsed.prerelease : null;
     };
     module2.exports = prerelease;
@@ -24224,7 +24638,7 @@ var require_coerce = __commonJS({
   "node_modules/.pnpm/semver@7.7.2/node_modules/semver/functions/coerce.js"(exports2, module2) {
     "use strict";
     var SemVer = require_semver();
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var { safeRe: re, t } = require_re();
     var coerce2 = (version, options) => {
       if (version instanceof SemVer) {
@@ -24259,7 +24673,7 @@ var require_coerce = __commonJS({
       const patch = match[4] || "0";
       const prerelease = options.includePrerelease && match[5] ? `-${match[5]}` : "";
       const build = options.includePrerelease && match[6] ? `+${match[6]}` : "";
-      return parse(`${major}.${minor}.${patch}${prerelease}${build}`, options);
+      return parse2(`${major}.${minor}.${patch}${prerelease}${build}`, options);
     };
     module2.exports = coerce2;
   }
@@ -25275,7 +25689,7 @@ var require_semver2 = __commonJS({
     var constants = require_constants2();
     var SemVer = require_semver();
     var identifiers = require_identifiers();
-    var parse = require_parse3();
+    var parse2 = require_parse3();
     var valid = require_valid();
     var clean = require_clean();
     var inc = require_inc();
@@ -25313,7 +25727,7 @@ var require_semver2 = __commonJS({
     var simplifyRange = require_simplify();
     var subset = require_subset();
     module2.exports = {
-      parse,
+      parse: parse2,
       valid,
       clean,
       inc,
@@ -25995,7 +26409,7 @@ var require_parse4 = __commonJS({
     var Empty = function() {
     };
     Empty.prototype = /* @__PURE__ */ Object.create(null);
-    function parse(input) {
+    function parse2(input) {
       const result = new Empty();
       if (typeof input !== "string") {
         return result;
@@ -26075,7 +26489,7 @@ var require_parse4 = __commonJS({
       }
       return result;
     }
-    module2.exports = parse;
+    module2.exports = parse2;
   }
 });
 
@@ -26327,15 +26741,15 @@ var require_stringify = __commonJS({
 var require_lib = __commonJS({
   "node_modules/.pnpm/fast-querystring@1.1.2/node_modules/fast-querystring/lib/index.js"(exports2, module2) {
     "use strict";
-    var parse = require_parse4();
+    var parse2 = require_parse4();
     var stringify = require_stringify();
     var fastQuerystring = {
-      parse,
+      parse: parse2,
       stringify
     };
     module2.exports = fastQuerystring;
     module2.exports.default = fastQuerystring;
-    module2.exports.parse = parse;
+    module2.exports.parse = parse2;
     module2.exports.stringify = stringify;
   }
 });
@@ -27064,15 +27478,15 @@ var require_dist3 = __commonJS({
 var require_safe_regex2 = __commonJS({
   "node_modules/.pnpm/safe-regex2@5.0.0/node_modules/safe-regex2/index.js"(exports2, module2) {
     "use strict";
-    var parse = require_dist3();
-    var types = parse.types;
+    var parse2 = require_dist3();
+    var types = parse2.types;
     function safeRegex(re, opts) {
       if (!opts) opts = {};
       const replimit = opts.limit === void 0 ? 25 : opts.limit;
       if (isRegExp(re)) re = re.source;
       else if (typeof re !== "string") re = String(re);
       try {
-        re = parse(re);
+        re = parse2(re);
       } catch {
         return false;
       }
@@ -27358,8 +27772,8 @@ var require_handler_storage = __commonJS({
       // The store's implementation comes from the strategies provided to the Router.
       _buildConstraintStore(store, constraint) {
         for (let i = 0; i < this.handlers.length; i++) {
-          const handler = this.handlers[i];
-          const constraintValue = handler.constraints[constraint];
+          const handler2 = this.handlers[i];
+          const constraintValue = handler2.constraints[constraint];
           if (constraintValue !== void 0) {
             let indexes = store.get(constraintValue) || 0;
             indexes |= 1 << i;
@@ -27371,8 +27785,8 @@ var require_handler_storage = __commonJS({
       _constrainedIndexBitmask(constraint) {
         let mask = 0;
         for (let i = 0; i < this.handlers.length; i++) {
-          const handler = this.handlers[i];
-          const constraintValue = handler.constraints[constraint];
+          const handler2 = this.handlers[i];
+          const constraintValue = handler2.constraints[constraint];
           if (constraintValue !== void 0) {
             mask |= 1 << i;
           }
@@ -28058,25 +28472,25 @@ var require_find_my_way = __commonJS({
       this.routes = [];
       this.trees = {};
     }
-    Router.prototype.on = function on(method, path, opts, handler, store) {
+    Router.prototype.on = function on(method, path, opts, handler2, store) {
       if (typeof opts === "function") {
-        if (handler !== void 0) {
-          store = handler;
+        if (handler2 !== void 0) {
+          store = handler2;
         }
-        handler = opts;
+        handler2 = opts;
         opts = {};
       }
       assert(typeof path === "string", "Path should be a string");
       assert(path.length > 0, "The path could not be empty");
       assert(path[0] === "/" || path[0] === "*", "The first character of a path should be `/` or `*`");
-      assert(typeof handler === "function", "Handler should be a function");
+      assert(typeof handler2 === "function", "Handler should be a function");
       const optionalParamMatch = path.match(OPTIONAL_PARAM_REGEXP);
       if (optionalParamMatch) {
         assert(path.length === optionalParamMatch.index + optionalParamMatch[0].length, "Optional Parameter needs to be the last parameter of the path");
         const pathFull = path.replace(OPTIONAL_PARAM_REGEXP, "$1$2");
         const pathOptional = path.replace(OPTIONAL_PARAM_REGEXP, "$2") || "/";
-        this.on(method, pathFull, opts, handler, store);
-        this.on(method, pathOptional, opts, handler, store);
+        this.on(method, pathFull, opts, handler2, store);
+        this.on(method, pathOptional, opts, handler2, store);
         return;
       }
       const route = path;
@@ -28090,10 +28504,10 @@ var require_find_my_way = __commonJS({
       for (const method2 of methods) {
         assert(typeof method2 === "string", "Method should be a string");
         assert(httpMethods.includes(method2), `Method '${method2}' is not an http method.`);
-        this._on(method2, path, opts, handler, store, route);
+        this._on(method2, path, opts, handler2, store, route);
       }
     };
-    Router.prototype._on = function _on(method, path, opts, handler, store) {
+    Router.prototype._on = function _on(method, path, opts, handler2, store) {
       let constraints = {};
       if (opts.constraints !== void 0) {
         assert(typeof opts.constraints === "object" && opts.constraints !== null, "Constraints should be an object");
@@ -28209,7 +28623,7 @@ var require_find_my_way = __commonJS({
           throw new Error(`Method '${method}' already declared for route '${pattern}' with constraints '${JSON.stringify(constraints)}'`);
         }
       }
-      const route = { method, path, pattern, params, opts, handler, store };
+      const route = { method, path, pattern, params, opts, handler: handler2, store };
       this.routes.push(route);
       currentNode.addRoute(route, this.constrainer);
     };
@@ -28506,8 +28920,8 @@ var require_find_my_way = __commonJS({
     Router.prototype._rebuild = function(routes) {
       this.reset();
       for (const route of routes) {
-        const { method, path, opts, handler, store } = route;
-        this._on(method, path, opts, handler, store);
+        const { method, path, opts, handler: handler2, store } = route;
+        this._on(method, path, opts, handler2, store);
       }
     };
     Router.prototype._defaultRoute = function(req, res, ctx) {
@@ -28556,12 +28970,12 @@ var require_find_my_way = __commonJS({
       if (!httpMethods.hasOwnProperty(i)) continue;
       const m = httpMethods[i];
       const methodName = m.toLowerCase();
-      Router.prototype[methodName] = function(path, handler, store) {
-        return this.on(m, path, handler, store);
+      Router.prototype[methodName] = function(path, handler2, store) {
+        return this.on(m, path, handler2, store);
       };
     }
-    Router.prototype.all = function(path, handler, store) {
-      this.on(httpMethods, path, handler, store);
+    Router.prototype.all = function(path, handler2, store) {
+      this.on(httpMethods, path, handler2, store);
     };
     module2.exports = Router;
     function escapeRegExp(string) {
@@ -28754,14 +29168,14 @@ var require_route = __commonJS({
       function isAsyncConstraint() {
         return router.constrainer.asyncStrategiesInUse.size > 0;
       }
-      function prepareRoute({ method, url, options: options2, handler, isFastify }) {
+      function prepareRoute({ method, url, options: options2, handler: handler2, isFastify }) {
         if (typeof url !== "string") {
           throw new FST_ERR_INVALID_URL(typeof url);
         }
-        if (!handler && typeof options2 === "function") {
-          handler = options2;
+        if (!handler2 && typeof options2 === "function") {
+          handler2 = options2;
           options2 = {};
-        } else if (handler && typeof handler === "function") {
+        } else if (handler2 && typeof handler2 === "function") {
           if (Object.prototype.toString.call(options2) !== "[object Object]") {
             throw new FST_ERR_ROUTE_OPTIONS_NOT_OBJ(method, url);
           } else if (options2.handler) {
@@ -28776,7 +29190,7 @@ var require_route = __commonJS({
           method,
           url,
           path: url,
-          handler: handler || options2 && options2.handler
+          handler: handler2 || options2 && options2.handler
         });
         return route.call(this, { options: options2, isFastify });
       }
@@ -28868,22 +29282,22 @@ var require_route = __commonJS({
             opts.attachValidation = false;
           }
           if (prefixing === false) {
-            for (const hook of this[kHooks].onRoute) {
-              hook.call(this, opts);
+            for (const hook2 of this[kHooks].onRoute) {
+              hook2.call(this, opts);
             }
           }
-          for (const hook of lifecycleHooks) {
-            if (opts && hook in opts) {
-              if (Array.isArray(opts[hook])) {
-                for (const func of opts[hook]) {
+          for (const hook2 of lifecycleHooks) {
+            if (opts && hook2 in opts) {
+              if (Array.isArray(opts[hook2])) {
+                for (const func of opts[hook2]) {
                   if (typeof func !== "function") {
-                    throw new FST_ERR_HOOK_INVALID_HANDLER(hook, Object.prototype.toString.call(func));
+                    throw new FST_ERR_HOOK_INVALID_HANDLER(hook2, Object.prototype.toString.call(func));
                   }
-                  if (hook === "onSend" || hook === "preSerialization" || hook === "onError" || hook === "preParsing") {
+                  if (hook2 === "onSend" || hook2 === "preSerialization" || hook2 === "onError" || hook2 === "preParsing") {
                     if (func.constructor.name === "AsyncFunction" && func.length === 4) {
                       throw new FST_ERR_HOOK_INVALID_ASYNC_HANDLER();
                     }
-                  } else if (hook === "onRequestAbort") {
+                  } else if (hook2 === "onRequestAbort") {
                     if (func.constructor.name === "AsyncFunction" && func.length !== 1) {
                       throw new FST_ERR_HOOK_INVALID_ASYNC_HANDLER();
                     }
@@ -28893,8 +29307,8 @@ var require_route = __commonJS({
                     }
                   }
                 }
-              } else if (opts[hook] !== void 0 && typeof opts[hook] !== "function") {
-                throw new FST_ERR_HOOK_INVALID_HANDLER(hook, Object.prototype.toString.call(opts[hook]));
+              } else if (opts[hook2] !== void 0 && typeof opts[hook2] !== "function") {
+                throw new FST_ERR_HOOK_INVALID_HANDLER(hook2, Object.prototype.toString.call(opts[hook2]));
               }
             }
           }
@@ -28945,9 +29359,9 @@ var require_route = __commonJS({
             context[kReplySerializerDefault] = this[kReplySerializerDefault];
             context.schemaErrorFormatter = opts.schemaErrorFormatter || this[kSchemaErrorFormatter] || context.schemaErrorFormatter;
             avvio.once("preReady", () => {
-              for (const hook of lifecycleHooks) {
-                const toSet = this[kHooks][hook].concat(opts[hook] || []).map((h) => h.bind(this));
-                context[hook] = toSet.length ? toSet : null;
+              for (const hook2 of lifecycleHooks) {
+                const toSet = this[kHooks][hook2].concat(opts[hook2] || []).map((h) => h.bind(this));
+                context[hook2] = toSet.length ? toSet : null;
               }
               while (!context.Request[kHasBeenDecorated] && context.Request.parent) {
                 context.Request = context.Request.parent;
@@ -29022,10 +29436,10 @@ var require_route = __commonJS({
           req.headers["accept-version"] = req.headers[kRequestAcceptVersion];
           req.headers[kRequestAcceptVersion] = void 0;
         }
-        const request = new context.Request(id, params, req, query, childLogger, context);
-        const reply = new context.Reply(res, request, childLogger);
+        const request2 = new context.Request(id, params, req, query, childLogger, context);
+        const reply = new context.Reply(res, request2, childLogger);
         if (disableRequestLogging === false) {
-          childLogger.info({ req: request }, "incoming request");
+          childLogger.info({ req: request2 }, "incoming request");
         }
         if (hasLogger === true || context.onResponse !== null) {
           setupResponseListeners(reply);
@@ -29033,29 +29447,29 @@ var require_route = __commonJS({
         if (context.onRequest !== null) {
           onRequestHookRunner(
             context.onRequest,
-            request,
+            request2,
             reply,
             runPreParsing
           );
         } else {
-          runPreParsing(null, request, reply);
+          runPreParsing(null, request2, reply);
         }
         if (context.onRequestAbort !== null) {
           req.on("close", () => {
             if (req.aborted) {
               onRequestAbortHookRunner(
                 context.onRequestAbort,
-                request,
+                request2,
                 handleOnRequestAbortHooksErrors.bind(null, reply)
               );
             }
           });
         }
         if (context.onTimeout !== null) {
-          if (!request.raw.socket._meta) {
-            request.raw.socket.on("timeout", handleTimeout);
+          if (!request2.raw.socket._meta) {
+            request2.raw.socket.on("timeout", handleTimeout);
           }
-          request.raw.socket._meta = { context, request, reply };
+          request2.raw.socket._meta = { context, request: request2, reply };
         }
       }
     }
@@ -29065,12 +29479,12 @@ var require_route = __commonJS({
       }
     }
     function handleTimeout() {
-      const { context, request, reply } = this._meta;
+      const { context, request: request2, reply } = this._meta;
       onTimeoutHookRunner(
         context.onTimeout,
-        request,
+        request2,
         reply,
-        noop
+        noop2
       );
     }
     function normalizeAndValidateMethod(method) {
@@ -29094,24 +29508,24 @@ var require_route = __commonJS({
         throw new FST_ERR_ROUTE_BODY_LIMIT_OPTION_NOT_INT(bodyLimit);
       }
     }
-    function runPreParsing(err, request, reply) {
+    function runPreParsing(err, request2, reply) {
       if (reply.sent === true) return;
       if (err != null) {
         reply[kReplyIsError] = true;
         reply.send(err);
         return;
       }
-      request[kRequestPayloadStream] = request.raw;
-      if (request[kRouteContext].preParsing !== null) {
-        preParsingHookRunner(request[kRouteContext].preParsing, request, reply, handleRequest.bind(request.server));
+      request2[kRequestPayloadStream] = request2.raw;
+      if (request2[kRouteContext].preParsing !== null) {
+        preParsingHookRunner(request2[kRouteContext].preParsing, request2, reply, handleRequest.bind(request2.server));
       } else {
-        handleRequest.call(request.server, null, request, reply);
+        handleRequest.call(request2.server, null, request2, reply);
       }
     }
     function removeTrackedSocket() {
       this.keepAliveConnections.delete(this.socket);
     }
-    function noop() {
+    function noop2() {
     }
     module2.exports = { buildRouting, validateBodyLimitOption };
   }
@@ -29151,11 +29565,11 @@ var require_fourOhFour = __commonJS({
         router.onBadUrl = router.onBadUrl.bind(instance);
         router.defaultRoute = router.defaultRoute.bind(instance);
       }
-      function basic404(request, reply) {
-        const { url, method } = request.raw;
+      function basic404(request2, reply) {
+        const { url, method } = request2.raw;
         const message = `Route ${method}:${url} not found`;
         if (!disableRequestLogging) {
-          request.log.info(message);
+          request2.log.info(message);
         }
         reply.code(404).send({
           message,
@@ -29168,9 +29582,9 @@ var require_fourOhFour = __commonJS({
           const fourOhFourContext = this[kFourOhFourLevelInstance][kFourOhFourContext];
           const id = getGenReqId(fourOhFourContext.server, req);
           const childLogger = createChildLogger(fourOhFourContext, logger2, req, id);
-          const request = new Request(id, null, req, null, childLogger, fourOhFourContext);
-          const reply = new Reply(res, request, childLogger);
-          _onBadUrlHandler(request, reply);
+          const request2 = new Request(id, null, req, null, childLogger, fourOhFourContext);
+          const reply = new Reply(res, request2, childLogger);
+          _onBadUrlHandler(request2, reply);
         };
       }
       function setContext(instance, context) {
@@ -29178,7 +29592,7 @@ var require_fourOhFour = __commonJS({
         _404Context.onSend = context.onSend;
         context[kFourOhFourContext] = _404Context;
       }
-      function setNotFoundHandler(opts, handler, avvio, routeHandler) {
+      function setNotFoundHandler(opts, handler2, avvio, routeHandler) {
         if (this[kCanSetNotFoundHandler] === void 0) {
           this[kCanSetNotFoundHandler] = true;
         }
@@ -29193,49 +29607,49 @@ var require_fourOhFour = __commonJS({
         if (typeof opts === "object") {
           if (opts.preHandler) {
             if (Array.isArray(opts.preHandler)) {
-              opts.preHandler = opts.preHandler.map((hook) => hook.bind(_fastify));
+              opts.preHandler = opts.preHandler.map((hook2) => hook2.bind(_fastify));
             } else {
               opts.preHandler = opts.preHandler.bind(_fastify);
             }
           }
           if (opts.preValidation) {
             if (Array.isArray(opts.preValidation)) {
-              opts.preValidation = opts.preValidation.map((hook) => hook.bind(_fastify));
+              opts.preValidation = opts.preValidation.map((hook2) => hook2.bind(_fastify));
             } else {
               opts.preValidation = opts.preValidation.bind(_fastify);
             }
           }
         }
         if (typeof opts === "function") {
-          handler = opts;
+          handler2 = opts;
           opts = void 0;
         }
         opts = opts || {};
-        if (handler) {
+        if (handler2) {
           this[kFourOhFourLevelInstance][kCanSetNotFoundHandler] = false;
-          handler = handler.bind(this);
-          _onBadUrlHandler = handler;
+          handler2 = handler2.bind(this);
+          _onBadUrlHandler = handler2;
         } else {
-          handler = basic404;
+          handler2 = basic404;
           _onBadUrlHandler = basic404;
         }
         this.after((notHandledErr, done) => {
-          _setNotFoundHandler.call(this, prefix, opts, handler, avvio, routeHandler);
+          _setNotFoundHandler.call(this, prefix, opts, handler2, avvio, routeHandler);
           done(notHandledErr);
         });
       }
-      function _setNotFoundHandler(prefix, opts, handler, avvio, routeHandler) {
+      function _setNotFoundHandler(prefix, opts, handler2, avvio, routeHandler) {
         const context = new Context({
           schema: opts.schema,
-          handler,
+          handler: handler2,
           config: opts.config || {},
           server: this
         });
         avvio.once("preReady", () => {
           const context2 = this[kFourOhFourContext];
-          for (const hook of lifecycleHooks) {
-            const toSet = this[kHooks][hook].concat(opts[hook] || []).map((h) => h.bind(this));
-            context2[hook] = toSet.length ? toSet : null;
+          for (const hook2 of lifecycleHooks) {
+            const toSet = this[kHooks][hook2].concat(opts[hook2] || []).map((h) => h.bind(this));
+            context2[hook2] = toSet.length ? toSet : null;
           }
           context2.errorHandler = opts.errorHandler ? buildErrorHandler(this[kErrorHandler], opts.errorHandler) : this[kErrorHandler];
         });
@@ -29252,10 +29666,10 @@ var require_fourOhFour = __commonJS({
         const id = getGenReqId(fourOhFourContext.server, req);
         const childLogger = createChildLogger(fourOhFourContext, logger2, req, id);
         childLogger.info({ req }, "incoming request");
-        const request = new Request(id, null, req, null, childLogger, fourOhFourContext);
-        const reply = new Reply(res, request, childLogger);
-        request.log.warn("the default handler for 404 did not catch this, this is likely a fastify bug, please report it");
-        request.log.warn(router.prettyPrint());
+        const request2 = new Request(id, null, req, null, childLogger, fourOhFourContext);
+        const reply = new Reply(res, request2, childLogger);
+        request2.log.warn("the default handler for 404 did not catch this, this is likely a fastify bug, please report it");
+        request2.log.warn(router.prettyPrint());
         reply.code(404).send(new FST_ERR_NOT_FOUND());
       }
     }
@@ -30363,7 +30777,7 @@ var require_pluginOverride = __commonJS({
       if (opts.prefix) {
         instance[kFourOhFour].arrange404(instance);
       }
-      for (const hook of instance[kHooks].onRegister) hook.call(old, instance, opts);
+      for (const hook2 of instance[kHooks].onRegister) hook2.call(old, instance, opts);
       return instance;
     };
     function buildRoutePrefix(instancePrefix, pluginPrefix) {
@@ -30405,7 +30819,7 @@ var require_dist4 = __commonJS({
   "node_modules/.pnpm/cookie@1.0.2/node_modules/cookie/dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.parse = parse;
+    exports2.parse = parse2;
     exports2.serialize = serialize;
     var cookieNameRegExp = /^[\u0021-\u003A\u003C\u003E-\u007E]+$/;
     var cookieValueRegExp = /^[\u0021-\u003A\u003C-\u007E]*$/;
@@ -30418,7 +30832,7 @@ var require_dist4 = __commonJS({
       C.prototype = /* @__PURE__ */ Object.create(null);
       return C;
     })();
-    function parse(str, options) {
+    function parse2(str, options) {
       const obj = new NullObject();
       const len = str.length;
       if (len < 2)
@@ -30966,7 +31380,7 @@ var require_set_cookie = __commonJS({
       }
       return { name, value };
     }
-    function parse(input, options) {
+    function parse2(input, options) {
       options = options ? Object.assign({}, defaultParseOptions, options) : defaultParseOptions;
       if (!input) {
         if (!options.map) {
@@ -31063,8 +31477,8 @@ var require_set_cookie = __commonJS({
       }
       return cookiesStrings;
     }
-    module2.exports = parse;
-    module2.exports.parse = parse;
+    module2.exports = parse2;
+    module2.exports.parse = parse2;
     module2.exports.parseString = parseString;
     module2.exports.splitCookiesString = splitCookiesString;
   }
@@ -32255,7 +32669,7 @@ var require_light_my_request = __commonJS({
 var require_fastify = __commonJS({
   "node_modules/.pnpm/fastify@5.4.0/node_modules/fastify/fastify.js"(exports2, module2) {
     "use strict";
-    var VERSION = "5.4.0";
+    var VERSION9 = "5.4.0";
     var Avvio = require_boot();
     var http = require("node:http");
     var diagnostics = require("node:diagnostics_channel");
@@ -32466,32 +32880,32 @@ var require_fastify = __commonJS({
         // routing method
         routing: httpHandler,
         // routes shorthand methods
-        delete: function _delete(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "DELETE", url, options: options2, handler });
+        delete: function _delete(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "DELETE", url, options: options2, handler: handler2 });
         },
-        get: function _get(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "GET", url, options: options2, handler });
+        get: function _get(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "GET", url, options: options2, handler: handler2 });
         },
-        head: function _head(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "HEAD", url, options: options2, handler });
+        head: function _head(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "HEAD", url, options: options2, handler: handler2 });
         },
-        trace: function _trace(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "TRACE", url, options: options2, handler });
+        trace: function _trace(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "TRACE", url, options: options2, handler: handler2 });
         },
-        patch: function _patch(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "PATCH", url, options: options2, handler });
+        patch: function _patch(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "PATCH", url, options: options2, handler: handler2 });
         },
-        post: function _post(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "POST", url, options: options2, handler });
+        post: function _post(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "POST", url, options: options2, handler: handler2 });
         },
-        put: function _put(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "PUT", url, options: options2, handler });
+        put: function _put(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "PUT", url, options: options2, handler: handler2 });
         },
-        options: function _options(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: "OPTIONS", url, options: options2, handler });
+        options: function _options(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: "OPTIONS", url, options: options2, handler: handler2 });
         },
-        all: function _all(url, options2, handler) {
-          return router.prepareRoute.call(this, { method: this.supportedMethods, url, options: options2, handler });
+        all: function _all(url, options2, handler2) {
+          return router.prepareRoute.call(this, { method: this.supportedMethods, url, options: options2, handler: handler2 });
         },
         // extended route
         route: function _route(options2) {
@@ -32508,7 +32922,7 @@ var require_fastify = __commonJS({
         // type provider
         withTypeProvider,
         // hooks
-        addHook,
+        addHook: addHook2,
         // schemas
         addSchema,
         getSchema: schemaController.getSchema.bind(schemaController),
@@ -32616,7 +33030,7 @@ var require_fastify = __commonJS({
         version: {
           configurable: true,
           get() {
-            return VERSION;
+            return VERSION9;
           }
         },
         errorHandler: {
@@ -32795,7 +33209,7 @@ var require_fastify = __commonJS({
       function withTypeProvider() {
         return this;
       }
-      function addHook(name, fn) {
+      function addHook2(name, fn) {
         throwIfAlreadyStarted('Cannot call "addHook"!');
         if (fn == null) {
           throw new errorCodes.FST_ERR_HOOK_INVALID_HANDLER(name, fn);
@@ -32885,12 +33299,12 @@ ${body}`);
         if (frameworkErrors) {
           const id = getGenReqId(onBadUrlContext.server, req);
           const childLogger = createChildLogger(onBadUrlContext, logger2, req, id);
-          const request = new Request(id, null, req, null, childLogger, onBadUrlContext);
-          const reply = new Reply(res, request, childLogger);
+          const request2 = new Request(id, null, req, null, childLogger, onBadUrlContext);
+          const reply = new Reply(res, request2, childLogger);
           if (disableRequestLogging === false) {
-            childLogger.info({ req: request }, "incoming request");
+            childLogger.info({ req: request2 }, "incoming request");
           }
-          return frameworkErrors(new FST_ERR_BAD_URL(path), request, reply);
+          return frameworkErrors(new FST_ERR_BAD_URL(path), request2, reply);
         }
         const body = `{"error":"Bad Request","code":"FST_ERR_BAD_URL","message":"'${path}' is not a valid url component","statusCode":400}`;
         res.writeHead(400, {
@@ -32906,12 +33320,12 @@ ${body}`);
             if (frameworkErrors) {
               const id = getGenReqId(onBadUrlContext.server, req);
               const childLogger = createChildLogger(onBadUrlContext, logger2, req, id);
-              const request = new Request(id, null, req, null, childLogger, onBadUrlContext);
-              const reply = new Reply(res, request, childLogger);
+              const request2 = new Request(id, null, req, null, childLogger, onBadUrlContext);
+              const reply = new Reply(res, request2, childLogger);
               if (disableRequestLogging === false) {
-                childLogger.info({ req: request }, "incoming request");
+                childLogger.info({ req: request2 }, "incoming request");
               }
-              return frameworkErrors(new FST_ERR_ASYNC_CONSTRAINT(), request, reply);
+              return frameworkErrors(new FST_ERR_ASYNC_CONSTRAINT(), request2, reply);
             }
             const body = '{"error":"Internal Server Error","message":"Unexpected error from async constraint","statusCode":500}';
             res.writeHead(500, {
@@ -32922,9 +33336,9 @@ ${body}`);
           }
         };
       }
-      function setNotFoundHandler(opts, handler) {
+      function setNotFoundHandler(opts, handler2) {
         throwIfAlreadyStarted('Cannot call "setNotFoundHandler"!');
-        fourOhFour.setNotFoundHandler.call(this, opts, handler, avvio, router.routeHandler);
+        fourOhFour.setNotFoundHandler.call(this, opts, handler2, avvio, router.routeHandler);
         return this;
       }
       function setValidatorCompiler(validatorCompiler) {
@@ -33015,8 +33429,8 @@ ${body}`);
         }
         const _method = method.toLowerCase();
         if (!this.hasDecorator(_method)) {
-          this.decorate(_method, function(url, options2, handler) {
-            return router.prepareRoute.call(this, { method, url, options: options2, handler });
+          this.decorate(_method, function(url, options2, handler2) {
+            return router.prepareRoute.call(this, { method, url, options: options2, handler: handler2 });
           });
         }
         return this;
@@ -33033,420 +33447,6 @@ ${body}`);
     module2.exports.errorCodes = errorCodes;
     module2.exports.fastify = fastify;
     module2.exports.default = fastify;
-  }
-});
-
-// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/getPluginName.js
-var require_getPluginName = __commonJS({
-  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/getPluginName.js"(exports2, module2) {
-    "use strict";
-    var fpStackTracePattern = /at\s{1}(?:.*\.)?plugin\s{1}.*\n\s*(.*)/;
-    var fileNamePattern = /(\w*(\.\w*)*)\..*/;
-    module2.exports = function getPluginName(fn) {
-      if (fn.name.length > 0) return fn.name;
-      const stackTraceLimit = Error.stackTraceLimit;
-      Error.stackTraceLimit = 10;
-      try {
-        throw new Error("anonymous function");
-      } catch (e) {
-        Error.stackTraceLimit = stackTraceLimit;
-        return extractPluginName(e.stack);
-      }
-    };
-    function extractPluginName(stack) {
-      const m = stack.match(fpStackTracePattern);
-      return m ? m[1].split(/[/\\]/).slice(-1)[0].match(fileNamePattern)[1] : "anonymous";
-    }
-    module2.exports.extractPluginName = extractPluginName;
-  }
-});
-
-// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/toCamelCase.js
-var require_toCamelCase = __commonJS({
-  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/lib/toCamelCase.js"(exports2, module2) {
-    "use strict";
-    module2.exports = function toCamelCase(name) {
-      if (name[0] === "@") {
-        name = name.slice(1).replace("/", "-");
-      }
-      return name.replace(/-(.)/g, function(match, g1) {
-        return g1.toUpperCase();
-      });
-    };
-  }
-});
-
-// node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/plugin.js
-var require_plugin2 = __commonJS({
-  "node_modules/.pnpm/fastify-plugin@5.0.1/node_modules/fastify-plugin/plugin.js"(exports2, module2) {
-    "use strict";
-    var getPluginName = require_getPluginName();
-    var toCamelCase = require_toCamelCase();
-    var count = 0;
-    function plugin(fn, options = {}) {
-      let autoName = false;
-      if (fn.default !== void 0) {
-        fn = fn.default;
-      }
-      if (typeof fn !== "function") {
-        throw new TypeError(
-          `fastify-plugin expects a function, instead got a '${typeof fn}'`
-        );
-      }
-      if (typeof options === "string") {
-        options = {
-          fastify: options
-        };
-      }
-      if (typeof options !== "object" || Array.isArray(options) || options === null) {
-        throw new TypeError("The options object should be an object");
-      }
-      if (options.fastify !== void 0 && typeof options.fastify !== "string") {
-        throw new TypeError(`fastify-plugin expects a version string, instead got '${typeof options.fastify}'`);
-      }
-      if (!options.name) {
-        autoName = true;
-        options.name = getPluginName(fn) + "-auto-" + count++;
-      }
-      fn[Symbol.for("skip-override")] = options.encapsulate !== true;
-      fn[Symbol.for("fastify.display-name")] = options.name;
-      fn[Symbol.for("plugin-meta")] = options;
-      if (!fn.default) {
-        fn.default = fn;
-      }
-      const camelCase = toCamelCase(options.name);
-      if (!autoName && !fn[camelCase]) {
-        fn[camelCase] = fn;
-      }
-      return fn;
-    }
-    module2.exports = plugin;
-    module2.exports.default = plugin;
-    module2.exports.fastifyPlugin = plugin;
-  }
-});
-
-// node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/vary.js
-var require_vary = __commonJS({
-  "node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/vary.js"(exports2, module2) {
-    "use strict";
-    var { FifoMap: FifoCache } = require_toad_cache();
-    var validFieldnameRE = /^[!#$%&'*+\-.^\w`|~]+$/u;
-    function validateFieldname(fieldname) {
-      if (validFieldnameRE.test(fieldname) === false) {
-        throw new TypeError("Fieldname contains invalid characters.");
-      }
-    }
-    function parse(header) {
-      header = header.trim().toLowerCase();
-      const result = [];
-      if (header.length === 0) {
-      } else if (header.indexOf(",") === -1) {
-        result.push(header);
-      } else {
-        const il = header.length;
-        let i = 0;
-        let pos = 0;
-        let char;
-        for (i; i < il; ++i) {
-          char = header[i];
-          if (char === " ") {
-            pos = i + 1;
-          } else if (char === ",") {
-            if (pos !== i) {
-              result.push(header.slice(pos, i));
-            }
-            pos = i + 1;
-          }
-        }
-        if (pos !== i) {
-          result.push(header.slice(pos, i));
-        }
-      }
-      return result;
-    }
-    function createAddFieldnameToVary(fieldname) {
-      const headerCache = new FifoCache(1e3);
-      validateFieldname(fieldname);
-      return function(reply) {
-        let header = reply.getHeader("Vary");
-        if (!header) {
-          reply.header("Vary", fieldname);
-          return;
-        }
-        if (header === "*") {
-          return;
-        }
-        if (fieldname === "*") {
-          reply.header("Vary", "*");
-          return;
-        }
-        if (Array.isArray(header)) {
-          header = header.join(", ");
-        }
-        if (headerCache.get(header) === void 0) {
-          const vals = parse(header);
-          if (vals.indexOf("*") !== -1) {
-            headerCache.set(header, "*");
-          } else if (vals.indexOf(fieldname.toLowerCase()) === -1) {
-            headerCache.set(header, header + ", " + fieldname);
-          } else {
-            headerCache.set(header, null);
-          }
-        }
-        const cached = headerCache.get(header);
-        if (cached !== null) {
-          reply.header("Vary", cached);
-        }
-      };
-    }
-    module2.exports.createAddFieldnameToVary = createAddFieldnameToVary;
-    module2.exports.addOriginToVaryHeader = createAddFieldnameToVary("Origin");
-    module2.exports.addAccessControlRequestHeadersToVaryHeader = createAddFieldnameToVary("Access-Control-Request-Headers");
-    module2.exports.parse = parse;
-  }
-});
-
-// node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/index.js
-var require_cors = __commonJS({
-  "node_modules/.pnpm/@fastify+cors@11.0.1/node_modules/@fastify/cors/index.js"(exports2, module2) {
-    "use strict";
-    var fp = require_plugin2();
-    var {
-      addAccessControlRequestHeadersToVaryHeader,
-      addOriginToVaryHeader
-    } = require_vary();
-    var defaultOptions = {
-      origin: "*",
-      methods: "GET,HEAD,POST",
-      hook: "onRequest",
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-      credentials: false,
-      exposedHeaders: null,
-      allowedHeaders: null,
-      maxAge: null,
-      preflight: true,
-      strictPreflight: true
-    };
-    var validHooks = [
-      "onRequest",
-      "preParsing",
-      "preValidation",
-      "preHandler",
-      "preSerialization",
-      "onSend"
-    ];
-    var hookWithPayload = [
-      "preSerialization",
-      "preParsing",
-      "onSend"
-    ];
-    function validateHook(value, next) {
-      if (validHooks.indexOf(value) !== -1) {
-        return;
-      }
-      next(new TypeError("@fastify/cors: Invalid hook option provided."));
-    }
-    function fastifyCors(fastify, opts, next) {
-      fastify.decorateRequest("corsPreflightEnabled", false);
-      let hideOptionsRoute = true;
-      if (typeof opts === "function") {
-        handleCorsOptionsDelegator(opts, fastify, { hook: defaultOptions.hook }, next);
-      } else if (opts.delegator) {
-        const { delegator, ...options } = opts;
-        handleCorsOptionsDelegator(delegator, fastify, options, next);
-      } else {
-        if (opts.hideOptionsRoute !== void 0) hideOptionsRoute = opts.hideOptionsRoute;
-        const corsOptions = normalizeCorsOptions(opts);
-        validateHook(corsOptions.hook, next);
-        if (hookWithPayload.indexOf(corsOptions.hook) !== -1) {
-          fastify.addHook(corsOptions.hook, function handleCors(req, reply, _payload, next2) {
-            addCorsHeadersHandler(fastify, corsOptions, req, reply, next2);
-          });
-        } else {
-          fastify.addHook(corsOptions.hook, function handleCors(req, reply, next2) {
-            addCorsHeadersHandler(fastify, corsOptions, req, reply, next2);
-          });
-        }
-      }
-      fastify.options("*", { schema: { hide: hideOptionsRoute } }, (req, reply) => {
-        if (!req.corsPreflightEnabled) {
-          reply.callNotFound();
-          return;
-        }
-        reply.send();
-      });
-      next();
-    }
-    function handleCorsOptionsDelegator(optionsResolver, fastify, opts, next) {
-      const hook = opts?.hook || defaultOptions.hook;
-      validateHook(hook, next);
-      if (optionsResolver.length === 2) {
-        if (hookWithPayload.indexOf(hook) !== -1) {
-          fastify.addHook(hook, function handleCors(req, reply, _payload, next2) {
-            handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next2);
-          });
-        } else {
-          fastify.addHook(hook, function handleCors(req, reply, next2) {
-            handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next2);
-          });
-        }
-      } else {
-        if (hookWithPayload.indexOf(hook) !== -1) {
-          fastify.addHook(hook, function handleCors(req, reply, _payload, next2) {
-            const ret = optionsResolver(req);
-            if (ret && typeof ret.then === "function") {
-              ret.then((options) => addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next2)).catch(next2);
-              return;
-            }
-            next2(new Error("Invalid CORS origin option"));
-          });
-        } else {
-          fastify.addHook(hook, function handleCors(req, reply, next2) {
-            const ret = optionsResolver(req);
-            if (ret && typeof ret.then === "function") {
-              ret.then((options) => addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next2)).catch(next2);
-              return;
-            }
-            next2(new Error("Invalid CORS origin option"));
-          });
-        }
-      }
-    }
-    function handleCorsOptionsCallbackDelegator(optionsResolver, fastify, req, reply, next) {
-      optionsResolver(req, (err, options) => {
-        if (err) {
-          next(err);
-        } else {
-          addCorsHeadersHandler(fastify, normalizeCorsOptions(options, true), req, reply, next);
-        }
-      });
-    }
-    function normalizeCorsOptions(opts, dynamic) {
-      const corsOptions = { ...defaultOptions, ...opts };
-      if (Array.isArray(opts.origin) && opts.origin.indexOf("*") !== -1) {
-        corsOptions.origin = "*";
-      }
-      if (Number.isInteger(corsOptions.cacheControl)) {
-        corsOptions.cacheControl = `max-age=${corsOptions.cacheControl}`;
-      } else if (typeof corsOptions.cacheControl !== "string") {
-        corsOptions.cacheControl = null;
-      }
-      corsOptions.dynamic = dynamic || false;
-      return corsOptions;
-    }
-    function addCorsHeadersHandler(fastify, options, req, reply, next) {
-      if (typeof options.origin !== "string" && options.origin !== false || options.dynamic) {
-        addOriginToVaryHeader(reply);
-      }
-      const resolveOriginOption = typeof options.origin === "function" ? resolveOriginWrapper(fastify, options.origin) : (_, cb) => cb(null, options.origin);
-      resolveOriginOption(req, (error, resolvedOriginOption) => {
-        if (error !== null) {
-          return next(error);
-        }
-        if (resolvedOriginOption === false) {
-          return next();
-        }
-        if (req.routeOptions.config?.cors === false) {
-          return next();
-        }
-        if (!resolvedOriginOption) {
-          return next(new Error("Invalid CORS origin option"));
-        }
-        addCorsHeaders(req, reply, resolvedOriginOption, options);
-        if (req.raw.method === "OPTIONS" && options.preflight === true) {
-          if (options.strictPreflight === true && (!req.headers.origin || !req.headers["access-control-request-method"])) {
-            reply.status(400).type("text/plain").send("Invalid Preflight Request");
-            return;
-          }
-          req.corsPreflightEnabled = true;
-          addPreflightHeaders(req, reply, options);
-          if (!options.preflightContinue) {
-            reply.code(options.optionsSuccessStatus).header("Content-Length", "0").send();
-            return;
-          }
-        }
-        return next();
-      });
-    }
-    function addCorsHeaders(req, reply, originOption, corsOptions) {
-      const origin = getAccessControlAllowOriginHeader(req.headers.origin, originOption);
-      if (origin) {
-        reply.header("Access-Control-Allow-Origin", origin);
-      }
-      if (corsOptions.credentials) {
-        reply.header("Access-Control-Allow-Credentials", "true");
-      }
-      if (corsOptions.exposedHeaders !== null) {
-        reply.header(
-          "Access-Control-Expose-Headers",
-          Array.isArray(corsOptions.exposedHeaders) ? corsOptions.exposedHeaders.join(", ") : corsOptions.exposedHeaders
-        );
-      }
-    }
-    function addPreflightHeaders(req, reply, corsOptions) {
-      reply.header(
-        "Access-Control-Allow-Methods",
-        Array.isArray(corsOptions.methods) ? corsOptions.methods.join(", ") : corsOptions.methods
-      );
-      if (corsOptions.allowedHeaders === null) {
-        addAccessControlRequestHeadersToVaryHeader(reply);
-        const reqAllowedHeaders = req.headers["access-control-request-headers"];
-        if (reqAllowedHeaders !== void 0) {
-          reply.header("Access-Control-Allow-Headers", reqAllowedHeaders);
-        }
-      } else {
-        reply.header(
-          "Access-Control-Allow-Headers",
-          Array.isArray(corsOptions.allowedHeaders) ? corsOptions.allowedHeaders.join(", ") : corsOptions.allowedHeaders
-        );
-      }
-      if (corsOptions.maxAge !== null) {
-        reply.header("Access-Control-Max-Age", String(corsOptions.maxAge));
-      }
-      if (corsOptions.cacheControl) {
-        reply.header("Cache-Control", corsOptions.cacheControl);
-      }
-    }
-    function resolveOriginWrapper(fastify, origin) {
-      return function(req, cb) {
-        const result = origin.call(fastify, req.headers.origin, cb);
-        if (result && typeof result.then === "function") {
-          result.then((res) => cb(null, res), cb);
-        }
-      };
-    }
-    function getAccessControlAllowOriginHeader(reqOrigin, originOption) {
-      if (typeof originOption === "string") {
-        return originOption;
-      }
-      return isRequestOriginAllowed(reqOrigin, originOption) ? reqOrigin : false;
-    }
-    function isRequestOriginAllowed(reqOrigin, allowedOrigin) {
-      if (Array.isArray(allowedOrigin)) {
-        for (let i = 0; i < allowedOrigin.length; ++i) {
-          if (isRequestOriginAllowed(reqOrigin, allowedOrigin[i])) {
-            return true;
-          }
-        }
-        return false;
-      } else if (typeof allowedOrigin === "string") {
-        return reqOrigin === allowedOrigin;
-      } else if (allowedOrigin instanceof RegExp) {
-        allowedOrigin.lastIndex = 0;
-        return allowedOrigin.test(reqOrigin);
-      } else {
-        return !!allowedOrigin;
-      }
-    }
-    var _fastifyCors = fp(fastifyCors, {
-      fastify: "5.x",
-      name: "@fastify/cors"
-    });
-    module2.exports = _fastifyCors;
-    module2.exports.fastifyCors = _fastifyCors;
-    module2.exports.default = _fastifyCors;
   }
 });
 
@@ -33528,7 +33528,7 @@ var require_main = __commonJS({
     var packageJson = require_package2();
     var version = packageJson.version;
     var LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg;
-    function parse(src) {
+    function parse2(src) {
       const obj = {};
       let lines = src.toString();
       lines = lines.replace(/\r\n?/mg, "\n");
@@ -33798,7 +33798,7 @@ var require_main = __commonJS({
       _parseVault,
       config: config2,
       decrypt,
-      parse,
+      parse: parse2,
       populate
     };
     module2.exports.configDotenv = DotenvModule.configDotenv;
@@ -33812,9 +33812,105 @@ var require_main = __commonJS({
   }
 });
 
+// node_modules/.pnpm/fast-content-type-parse@3.0.0/node_modules/fast-content-type-parse/index.js
+var require_fast_content_type_parse = __commonJS({
+  "node_modules/.pnpm/fast-content-type-parse@3.0.0/node_modules/fast-content-type-parse/index.js"(exports2, module2) {
+    "use strict";
+    var NullObject = function NullObject2() {
+    };
+    NullObject.prototype = /* @__PURE__ */ Object.create(null);
+    var paramRE = /; *([!#$%&'*+.^\w`|~-]+)=("(?:[\v\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\v\u0020-\u00ff])*"|[!#$%&'*+.^\w`|~-]+) */gu;
+    var quotedPairRE = /\\([\v\u0020-\u00ff])/gu;
+    var mediaTypeRE = /^[!#$%&'*+.^\w|~-]+\/[!#$%&'*+.^\w|~-]+$/u;
+    var defaultContentType = { type: "", parameters: new NullObject() };
+    Object.freeze(defaultContentType.parameters);
+    Object.freeze(defaultContentType);
+    function parse2(header) {
+      if (typeof header !== "string") {
+        throw new TypeError("argument header is required and must be a string");
+      }
+      let index = header.indexOf(";");
+      const type = index !== -1 ? header.slice(0, index).trim() : header.trim();
+      if (mediaTypeRE.test(type) === false) {
+        throw new TypeError("invalid media type");
+      }
+      const result = {
+        type: type.toLowerCase(),
+        parameters: new NullObject()
+      };
+      if (index === -1) {
+        return result;
+      }
+      let key;
+      let match;
+      let value;
+      paramRE.lastIndex = index;
+      while (match = paramRE.exec(header)) {
+        if (match.index !== index) {
+          throw new TypeError("invalid parameter format");
+        }
+        index += match[0].length;
+        key = match[1].toLowerCase();
+        value = match[2];
+        if (value[0] === '"') {
+          value = value.slice(1, value.length - 1);
+          quotedPairRE.test(value) && (value = value.replace(quotedPairRE, "$1"));
+        }
+        result.parameters[key] = value;
+      }
+      if (index !== header.length) {
+        throw new TypeError("invalid parameter format");
+      }
+      return result;
+    }
+    function safeParse2(header) {
+      if (typeof header !== "string") {
+        return defaultContentType;
+      }
+      let index = header.indexOf(";");
+      const type = index !== -1 ? header.slice(0, index).trim() : header.trim();
+      if (mediaTypeRE.test(type) === false) {
+        return defaultContentType;
+      }
+      const result = {
+        type: type.toLowerCase(),
+        parameters: new NullObject()
+      };
+      if (index === -1) {
+        return result;
+      }
+      let key;
+      let match;
+      let value;
+      paramRE.lastIndex = index;
+      while (match = paramRE.exec(header)) {
+        if (match.index !== index) {
+          return defaultContentType;
+        }
+        index += match[0].length;
+        key = match[1].toLowerCase();
+        value = match[2];
+        if (value[0] === '"') {
+          value = value.slice(1, value.length - 1);
+          quotedPairRE.test(value) && (value = value.replace(quotedPairRE, "$1"));
+        }
+        result.parameters[key] = value;
+      }
+      if (index !== header.length) {
+        return defaultContentType;
+      }
+      return result;
+    }
+    module2.exports.default = { parse: parse2, safeParse: safeParse2 };
+    module2.exports.parse = parse2;
+    module2.exports.safeParse = safeParse2;
+    module2.exports.defaultContentType = defaultContentType;
+  }
+});
+
 // src/index.ts
-var import_fastify = __toESM(require_fastify());
 var import_cors = __toESM(require_cors());
+var import_fastify = __toESM(require_fastify());
 
 // src/config.ts
 var import_dotenv = __toESM(require_main());
@@ -37877,6 +37973,3335 @@ var appConfig = {
   }
 };
 
+// node_modules/.pnpm/universal-user-agent@7.0.3/node_modules/universal-user-agent/index.js
+function getUserAgent() {
+  if (typeof navigator === "object" && "userAgent" in navigator) {
+    return navigator.userAgent;
+  }
+  if (typeof process === "object" && process.version !== void 0) {
+    return `Node.js/${process.version.substr(1)} (${process.platform}; ${process.arch})`;
+  }
+  return "<environment undetectable>";
+}
+
+// node_modules/.pnpm/before-after-hook@4.0.0/node_modules/before-after-hook/lib/register.js
+function register(state, name, method, options) {
+  if (typeof method !== "function") {
+    throw new Error("method for before hook must be a function");
+  }
+  if (!options) {
+    options = {};
+  }
+  if (Array.isArray(name)) {
+    return name.reverse().reduce((callback, name2) => {
+      return register.bind(null, state, name2, callback, options);
+    }, method)();
+  }
+  return Promise.resolve().then(() => {
+    if (!state.registry[name]) {
+      return method(options);
+    }
+    return state.registry[name].reduce((method2, registered) => {
+      return registered.hook.bind(null, method2, options);
+    }, method)();
+  });
+}
+
+// node_modules/.pnpm/before-after-hook@4.0.0/node_modules/before-after-hook/lib/add.js
+function addHook(state, kind, name, hook2) {
+  const orig = hook2;
+  if (!state.registry[name]) {
+    state.registry[name] = [];
+  }
+  if (kind === "before") {
+    hook2 = (method, options) => {
+      return Promise.resolve().then(orig.bind(null, options)).then(method.bind(null, options));
+    };
+  }
+  if (kind === "after") {
+    hook2 = (method, options) => {
+      let result;
+      return Promise.resolve().then(method.bind(null, options)).then((result_) => {
+        result = result_;
+        return orig(result, options);
+      }).then(() => {
+        return result;
+      });
+    };
+  }
+  if (kind === "error") {
+    hook2 = (method, options) => {
+      return Promise.resolve().then(method.bind(null, options)).catch((error) => {
+        return orig(error, options);
+      });
+    };
+  }
+  state.registry[name].push({
+    hook: hook2,
+    orig
+  });
+}
+
+// node_modules/.pnpm/before-after-hook@4.0.0/node_modules/before-after-hook/lib/remove.js
+function removeHook(state, name, method) {
+  if (!state.registry[name]) {
+    return;
+  }
+  const index = state.registry[name].map((registered) => {
+    return registered.orig;
+  }).indexOf(method);
+  if (index === -1) {
+    return;
+  }
+  state.registry[name].splice(index, 1);
+}
+
+// node_modules/.pnpm/before-after-hook@4.0.0/node_modules/before-after-hook/index.js
+var bind = Function.bind;
+var bindable = bind.bind(bind);
+function bindApi(hook2, state, name) {
+  const removeHookRef = bindable(removeHook, null).apply(
+    null,
+    name ? [state, name] : [state]
+  );
+  hook2.api = { remove: removeHookRef };
+  hook2.remove = removeHookRef;
+  ["before", "error", "after", "wrap"].forEach((kind) => {
+    const args = name ? [state, kind, name] : [state, kind];
+    hook2[kind] = hook2.api[kind] = bindable(addHook, null).apply(null, args);
+  });
+}
+function Singular() {
+  const singularHookName = Symbol("Singular");
+  const singularHookState = {
+    registry: {}
+  };
+  const singularHook = register.bind(null, singularHookState, singularHookName);
+  bindApi(singularHook, singularHookState, singularHookName);
+  return singularHook;
+}
+function Collection() {
+  const state = {
+    registry: {}
+  };
+  const hook2 = register.bind(null, state);
+  bindApi(hook2, state);
+  return hook2;
+}
+var before_after_hook_default = { Singular, Collection };
+
+// node_modules/.pnpm/@octokit+endpoint@11.0.0/node_modules/@octokit/endpoint/dist-bundle/index.js
+var VERSION = "0.0.0-development";
+var userAgent = `octokit-endpoint.js/${VERSION} ${getUserAgent()}`;
+var DEFAULTS = {
+  method: "GET",
+  baseUrl: "https://api.github.com",
+  headers: {
+    accept: "application/vnd.github.v3+json",
+    "user-agent": userAgent
+  },
+  mediaType: {
+    format: ""
+  }
+};
+function lowercaseKeys(object) {
+  if (!object) {
+    return {};
+  }
+  return Object.keys(object).reduce((newObj, key) => {
+    newObj[key.toLowerCase()] = object[key];
+    return newObj;
+  }, {});
+}
+function isPlainObject(value) {
+  if (typeof value !== "object" || value === null) return false;
+  if (Object.prototype.toString.call(value) !== "[object Object]") return false;
+  const proto = Object.getPrototypeOf(value);
+  if (proto === null) return true;
+  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
+}
+function mergeDeep(defaults, options) {
+  const result = Object.assign({}, defaults);
+  Object.keys(options).forEach((key) => {
+    if (isPlainObject(options[key])) {
+      if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
+      else result[key] = mergeDeep(defaults[key], options[key]);
+    } else {
+      Object.assign(result, { [key]: options[key] });
+    }
+  });
+  return result;
+}
+function removeUndefinedProperties(obj) {
+  for (const key in obj) {
+    if (obj[key] === void 0) {
+      delete obj[key];
+    }
+  }
+  return obj;
+}
+function merge(defaults, route, options) {
+  if (typeof route === "string") {
+    let [method, url] = route.split(" ");
+    options = Object.assign(url ? { method, url } : { url: method }, options);
+  } else {
+    options = Object.assign({}, route);
+  }
+  options.headers = lowercaseKeys(options.headers);
+  removeUndefinedProperties(options);
+  removeUndefinedProperties(options.headers);
+  const mergedOptions = mergeDeep(defaults || {}, options);
+  if (options.url === "/graphql") {
+    if (defaults && defaults.mediaType.previews?.length) {
+      mergedOptions.mediaType.previews = defaults.mediaType.previews.filter(
+        (preview) => !mergedOptions.mediaType.previews.includes(preview)
+      ).concat(mergedOptions.mediaType.previews);
+    }
+    mergedOptions.mediaType.previews = (mergedOptions.mediaType.previews || []).map((preview) => preview.replace(/-preview/, ""));
+  }
+  return mergedOptions;
+}
+function addQueryParameters(url, parameters) {
+  const separator = /\?/.test(url) ? "&" : "?";
+  const names = Object.keys(parameters);
+  if (names.length === 0) {
+    return url;
+  }
+  return url + separator + names.map((name) => {
+    if (name === "q") {
+      return "q=" + parameters.q.split("+").map(encodeURIComponent).join("+");
+    }
+    return `${name}=${encodeURIComponent(parameters[name])}`;
+  }).join("&");
+}
+var urlVariableRegex = /\{[^{}}]+\}/g;
+function removeNonChars(variableName) {
+  return variableName.replace(/(?:^\W+)|(?:(?<!\W)\W+$)/g, "").split(/,/);
+}
+function extractUrlVariableNames(url) {
+  const matches = url.match(urlVariableRegex);
+  if (!matches) {
+    return [];
+  }
+  return matches.map(removeNonChars).reduce((a, b) => a.concat(b), []);
+}
+function omit(object, keysToOmit) {
+  const result = { __proto__: null };
+  for (const key of Object.keys(object)) {
+    if (keysToOmit.indexOf(key) === -1) {
+      result[key] = object[key];
+    }
+  }
+  return result;
+}
+function encodeReserved(str) {
+  return str.split(/(%[0-9A-Fa-f]{2})/g).map(function(part) {
+    if (!/%[0-9A-Fa-f]/.test(part)) {
+      part = encodeURI(part).replace(/%5B/g, "[").replace(/%5D/g, "]");
+    }
+    return part;
+  }).join("");
+}
+function encodeUnreserved(str) {
+  return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
+    return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+  });
+}
+function encodeValue(operator, value, key) {
+  value = operator === "+" || operator === "#" ? encodeReserved(value) : encodeUnreserved(value);
+  if (key) {
+    return encodeUnreserved(key) + "=" + value;
+  } else {
+    return value;
+  }
+}
+function isDefined(value) {
+  return value !== void 0 && value !== null;
+}
+function isKeyOperator(operator) {
+  return operator === ";" || operator === "&" || operator === "?";
+}
+function getValues(context, operator, key, modifier) {
+  var value = context[key], result = [];
+  if (isDefined(value) && value !== "") {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      value = value.toString();
+      if (modifier && modifier !== "*") {
+        value = value.substring(0, parseInt(modifier, 10));
+      }
+      result.push(
+        encodeValue(operator, value, isKeyOperator(operator) ? key : "")
+      );
+    } else {
+      if (modifier === "*") {
+        if (Array.isArray(value)) {
+          value.filter(isDefined).forEach(function(value2) {
+            result.push(
+              encodeValue(operator, value2, isKeyOperator(operator) ? key : "")
+            );
+          });
+        } else {
+          Object.keys(value).forEach(function(k) {
+            if (isDefined(value[k])) {
+              result.push(encodeValue(operator, value[k], k));
+            }
+          });
+        }
+      } else {
+        const tmp = [];
+        if (Array.isArray(value)) {
+          value.filter(isDefined).forEach(function(value2) {
+            tmp.push(encodeValue(operator, value2));
+          });
+        } else {
+          Object.keys(value).forEach(function(k) {
+            if (isDefined(value[k])) {
+              tmp.push(encodeUnreserved(k));
+              tmp.push(encodeValue(operator, value[k].toString()));
+            }
+          });
+        }
+        if (isKeyOperator(operator)) {
+          result.push(encodeUnreserved(key) + "=" + tmp.join(","));
+        } else if (tmp.length !== 0) {
+          result.push(tmp.join(","));
+        }
+      }
+    }
+  } else {
+    if (operator === ";") {
+      if (isDefined(value)) {
+        result.push(encodeUnreserved(key));
+      }
+    } else if (value === "" && (operator === "&" || operator === "?")) {
+      result.push(encodeUnreserved(key) + "=");
+    } else if (value === "") {
+      result.push("");
+    }
+  }
+  return result;
+}
+function parseUrl(template) {
+  return {
+    expand: expand.bind(null, template)
+  };
+}
+function expand(template, context) {
+  var operators = ["+", "#", ".", "/", ";", "?", "&"];
+  template = template.replace(
+    /\{([^\{\}]+)\}|([^\{\}]+)/g,
+    function(_, expression, literal) {
+      if (expression) {
+        let operator = "";
+        const values = [];
+        if (operators.indexOf(expression.charAt(0)) !== -1) {
+          operator = expression.charAt(0);
+          expression = expression.substr(1);
+        }
+        expression.split(/,/g).forEach(function(variable) {
+          var tmp = /([^:\*]*)(?::(\d+)|(\*))?/.exec(variable);
+          values.push(getValues(context, operator, tmp[1], tmp[2] || tmp[3]));
+        });
+        if (operator && operator !== "+") {
+          var separator = ",";
+          if (operator === "?") {
+            separator = "&";
+          } else if (operator !== "#") {
+            separator = operator;
+          }
+          return (values.length !== 0 ? operator : "") + values.join(separator);
+        } else {
+          return values.join(",");
+        }
+      } else {
+        return encodeReserved(literal);
+      }
+    }
+  );
+  if (template === "/") {
+    return template;
+  } else {
+    return template.replace(/\/$/, "");
+  }
+}
+function parse(options) {
+  let method = options.method.toUpperCase();
+  let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
+  let headers = Object.assign({}, options.headers);
+  let body;
+  let parameters = omit(options, [
+    "method",
+    "baseUrl",
+    "url",
+    "headers",
+    "request",
+    "mediaType"
+  ]);
+  const urlVariableNames = extractUrlVariableNames(url);
+  url = parseUrl(url).expand(parameters);
+  if (!/^http/.test(url)) {
+    url = options.baseUrl + url;
+  }
+  const omittedParameters = Object.keys(options).filter((option) => urlVariableNames.includes(option)).concat("baseUrl");
+  const remainingParameters = omit(parameters, omittedParameters);
+  const isBinaryRequest = /application\/octet-stream/i.test(headers.accept);
+  if (!isBinaryRequest) {
+    if (options.mediaType.format) {
+      headers.accept = headers.accept.split(/,/).map(
+        (format) => format.replace(
+          /application\/vnd(\.\w+)(\.v3)?(\.\w+)?(\+json)?$/,
+          `application/vnd$1$2.${options.mediaType.format}`
+        )
+      ).join(",");
+    }
+    if (url.endsWith("/graphql")) {
+      if (options.mediaType.previews?.length) {
+        const previewsFromAcceptHeader = headers.accept.match(/(?<![\w-])[\w-]+(?=-preview)/g) || [];
+        headers.accept = previewsFromAcceptHeader.concat(options.mediaType.previews).map((preview) => {
+          const format = options.mediaType.format ? `.${options.mediaType.format}` : "+json";
+          return `application/vnd.github.${preview}-preview${format}`;
+        }).join(",");
+      }
+    }
+  }
+  if (["GET", "HEAD"].includes(method)) {
+    url = addQueryParameters(url, remainingParameters);
+  } else {
+    if ("data" in remainingParameters) {
+      body = remainingParameters.data;
+    } else {
+      if (Object.keys(remainingParameters).length) {
+        body = remainingParameters;
+      }
+    }
+  }
+  if (!headers["content-type"] && typeof body !== "undefined") {
+    headers["content-type"] = "application/json; charset=utf-8";
+  }
+  if (["PATCH", "PUT"].includes(method) && typeof body === "undefined") {
+    body = "";
+  }
+  return Object.assign(
+    { method, url, headers },
+    typeof body !== "undefined" ? { body } : null,
+    options.request ? { request: options.request } : null
+  );
+}
+function endpointWithDefaults(defaults, route, options) {
+  return parse(merge(defaults, route, options));
+}
+function withDefaults(oldDefaults, newDefaults) {
+  const DEFAULTS2 = merge(oldDefaults, newDefaults);
+  const endpoint2 = endpointWithDefaults.bind(null, DEFAULTS2);
+  return Object.assign(endpoint2, {
+    DEFAULTS: DEFAULTS2,
+    defaults: withDefaults.bind(null, DEFAULTS2),
+    merge: merge.bind(null, DEFAULTS2),
+    parse
+  });
+}
+var endpoint = withDefaults(null, DEFAULTS);
+
+// node_modules/.pnpm/@octokit+request@10.0.3/node_modules/@octokit/request/dist-bundle/index.js
+var import_fast_content_type_parse = __toESM(require_fast_content_type_parse(), 1);
+
+// node_modules/.pnpm/@octokit+request-error@7.0.0/node_modules/@octokit/request-error/dist-src/index.js
+var RequestError = class extends Error {
+  name;
+  /**
+   * http status code
+   */
+  status;
+  /**
+   * Request options that lead to the error.
+   */
+  request;
+  /**
+   * Response object if a response was received
+   */
+  response;
+  constructor(message, statusCode, options) {
+    super(message);
+    this.name = "HttpError";
+    this.status = Number.parseInt(statusCode);
+    if (Number.isNaN(this.status)) {
+      this.status = 0;
+    }
+    if ("response" in options) {
+      this.response = options.response;
+    }
+    const requestCopy = Object.assign({}, options.request);
+    if (options.request.headers.authorization) {
+      requestCopy.headers = Object.assign({}, options.request.headers, {
+        authorization: options.request.headers.authorization.replace(
+          /(?<! ) .*$/,
+          " [REDACTED]"
+        )
+      });
+    }
+    requestCopy.url = requestCopy.url.replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]").replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
+    this.request = requestCopy;
+  }
+};
+
+// node_modules/.pnpm/@octokit+request@10.0.3/node_modules/@octokit/request/dist-bundle/index.js
+var VERSION2 = "10.0.3";
+var defaults_default = {
+  headers: {
+    "user-agent": `octokit-request.js/${VERSION2} ${getUserAgent()}`
+  }
+};
+function isPlainObject2(value) {
+  if (typeof value !== "object" || value === null) return false;
+  if (Object.prototype.toString.call(value) !== "[object Object]") return false;
+  const proto = Object.getPrototypeOf(value);
+  if (proto === null) return true;
+  const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
+  return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
+}
+async function fetchWrapper(requestOptions) {
+  const fetch = requestOptions.request?.fetch || globalThis.fetch;
+  if (!fetch) {
+    throw new Error(
+      "fetch is not set. Please pass a fetch implementation as new Octokit({ request: { fetch }}). Learn more at https://github.com/octokit/octokit.js/#fetch-missing"
+    );
+  }
+  const log = requestOptions.request?.log || console;
+  const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
+  const body = isPlainObject2(requestOptions.body) || Array.isArray(requestOptions.body) ? JSON.stringify(requestOptions.body) : requestOptions.body;
+  const requestHeaders = Object.fromEntries(
+    Object.entries(requestOptions.headers).map(([name, value]) => [
+      name,
+      String(value)
+    ])
+  );
+  let fetchResponse;
+  try {
+    fetchResponse = await fetch(requestOptions.url, {
+      method: requestOptions.method,
+      body,
+      redirect: requestOptions.request?.redirect,
+      headers: requestHeaders,
+      signal: requestOptions.request?.signal,
+      // duplex must be set if request.body is ReadableStream or Async Iterables.
+      // See https://fetch.spec.whatwg.org/#dom-requestinit-duplex.
+      ...requestOptions.body && { duplex: "half" }
+    });
+  } catch (error) {
+    let message = "Unknown Error";
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        error.status = 500;
+        throw error;
+      }
+      message = error.message;
+      if (error.name === "TypeError" && "cause" in error) {
+        if (error.cause instanceof Error) {
+          message = error.cause.message;
+        } else if (typeof error.cause === "string") {
+          message = error.cause;
+        }
+      }
+    }
+    const requestError = new RequestError(message, 500, {
+      request: requestOptions
+    });
+    requestError.cause = error;
+    throw requestError;
+  }
+  const status = fetchResponse.status;
+  const url = fetchResponse.url;
+  const responseHeaders = {};
+  for (const [key, value] of fetchResponse.headers) {
+    responseHeaders[key] = value;
+  }
+  const octokitResponse = {
+    url,
+    status,
+    headers: responseHeaders,
+    data: ""
+  };
+  if ("deprecation" in responseHeaders) {
+    const matches = responseHeaders.link && responseHeaders.link.match(/<([^<>]+)>; rel="deprecation"/);
+    const deprecationLink = matches && matches.pop();
+    log.warn(
+      `[@octokit/request] "${requestOptions.method} ${requestOptions.url}" is deprecated. It is scheduled to be removed on ${responseHeaders.sunset}${deprecationLink ? `. See ${deprecationLink}` : ""}`
+    );
+  }
+  if (status === 204 || status === 205) {
+    return octokitResponse;
+  }
+  if (requestOptions.method === "HEAD") {
+    if (status < 400) {
+      return octokitResponse;
+    }
+    throw new RequestError(fetchResponse.statusText, status, {
+      response: octokitResponse,
+      request: requestOptions
+    });
+  }
+  if (status === 304) {
+    octokitResponse.data = await getResponseData(fetchResponse);
+    throw new RequestError("Not modified", status, {
+      response: octokitResponse,
+      request: requestOptions
+    });
+  }
+  if (status >= 400) {
+    octokitResponse.data = await getResponseData(fetchResponse);
+    throw new RequestError(toErrorMessage(octokitResponse.data), status, {
+      response: octokitResponse,
+      request: requestOptions
+    });
+  }
+  octokitResponse.data = parseSuccessResponseBody ? await getResponseData(fetchResponse) : fetchResponse.body;
+  return octokitResponse;
+}
+async function getResponseData(response) {
+  const contentType = response.headers.get("content-type");
+  if (!contentType) {
+    return response.text().catch(() => "");
+  }
+  const mimetype = (0, import_fast_content_type_parse.safeParse)(contentType);
+  if (isJSONResponse(mimetype)) {
+    let text = "";
+    try {
+      text = await response.text();
+      return JSON.parse(text);
+    } catch (err) {
+      return text;
+    }
+  } else if (mimetype.type.startsWith("text/") || mimetype.parameters.charset?.toLowerCase() === "utf-8") {
+    return response.text().catch(() => "");
+  } else {
+    return response.arrayBuffer().catch(() => new ArrayBuffer(0));
+  }
+}
+function isJSONResponse(mimetype) {
+  return mimetype.type === "application/json" || mimetype.type === "application/scim+json";
+}
+function toErrorMessage(data) {
+  if (typeof data === "string") {
+    return data;
+  }
+  if (data instanceof ArrayBuffer) {
+    return "Unknown error";
+  }
+  if ("message" in data) {
+    const suffix = "documentation_url" in data ? ` - ${data.documentation_url}` : "";
+    return Array.isArray(data.errors) ? `${data.message}: ${data.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix}` : `${data.message}${suffix}`;
+  }
+  return `Unknown error: ${JSON.stringify(data)}`;
+}
+function withDefaults2(oldEndpoint, newDefaults) {
+  const endpoint2 = oldEndpoint.defaults(newDefaults);
+  const newApi = function(route, parameters) {
+    const endpointOptions = endpoint2.merge(route, parameters);
+    if (!endpointOptions.request || !endpointOptions.request.hook) {
+      return fetchWrapper(endpoint2.parse(endpointOptions));
+    }
+    const request2 = (route2, parameters2) => {
+      return fetchWrapper(
+        endpoint2.parse(endpoint2.merge(route2, parameters2))
+      );
+    };
+    Object.assign(request2, {
+      endpoint: endpoint2,
+      defaults: withDefaults2.bind(null, endpoint2)
+    });
+    return endpointOptions.request.hook(request2, endpointOptions);
+  };
+  return Object.assign(newApi, {
+    endpoint: endpoint2,
+    defaults: withDefaults2.bind(null, endpoint2)
+  });
+}
+var request = withDefaults2(endpoint, defaults_default);
+
+// node_modules/.pnpm/@octokit+graphql@9.0.1/node_modules/@octokit/graphql/dist-bundle/index.js
+var VERSION3 = "0.0.0-development";
+function _buildMessageForResponseErrors(data) {
+  return `Request failed due to following response errors:
+` + data.errors.map((e) => ` - ${e.message}`).join("\n");
+}
+var GraphqlResponseError = class extends Error {
+  constructor(request2, headers, response) {
+    super(_buildMessageForResponseErrors(response));
+    this.request = request2;
+    this.headers = headers;
+    this.response = response;
+    this.errors = response.errors;
+    this.data = response.data;
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+  name = "GraphqlResponseError";
+  errors;
+  data;
+};
+var NON_VARIABLE_OPTIONS = [
+  "method",
+  "baseUrl",
+  "url",
+  "headers",
+  "request",
+  "query",
+  "mediaType",
+  "operationName"
+];
+var FORBIDDEN_VARIABLE_OPTIONS = ["query", "method", "url"];
+var GHES_V3_SUFFIX_REGEX = /\/api\/v3\/?$/;
+function graphql(request2, query, options) {
+  if (options) {
+    if (typeof query === "string" && "query" in options) {
+      return Promise.reject(
+        new Error(`[@octokit/graphql] "query" cannot be used as variable name`)
+      );
+    }
+    for (const key in options) {
+      if (!FORBIDDEN_VARIABLE_OPTIONS.includes(key)) continue;
+      return Promise.reject(
+        new Error(
+          `[@octokit/graphql] "${key}" cannot be used as variable name`
+        )
+      );
+    }
+  }
+  const parsedOptions = typeof query === "string" ? Object.assign({ query }, options) : query;
+  const requestOptions = Object.keys(
+    parsedOptions
+  ).reduce((result, key) => {
+    if (NON_VARIABLE_OPTIONS.includes(key)) {
+      result[key] = parsedOptions[key];
+      return result;
+    }
+    if (!result.variables) {
+      result.variables = {};
+    }
+    result.variables[key] = parsedOptions[key];
+    return result;
+  }, {});
+  const baseUrl = parsedOptions.baseUrl || request2.endpoint.DEFAULTS.baseUrl;
+  if (GHES_V3_SUFFIX_REGEX.test(baseUrl)) {
+    requestOptions.url = baseUrl.replace(GHES_V3_SUFFIX_REGEX, "/api/graphql");
+  }
+  return request2(requestOptions).then((response) => {
+    if (response.data.errors) {
+      const headers = {};
+      for (const key of Object.keys(response.headers)) {
+        headers[key] = response.headers[key];
+      }
+      throw new GraphqlResponseError(
+        requestOptions,
+        headers,
+        response.data
+      );
+    }
+    return response.data.data;
+  });
+}
+function withDefaults3(request2, newDefaults) {
+  const newRequest = request2.defaults(newDefaults);
+  const newApi = (query, options) => {
+    return graphql(newRequest, query, options);
+  };
+  return Object.assign(newApi, {
+    defaults: withDefaults3.bind(null, newRequest),
+    endpoint: newRequest.endpoint
+  });
+}
+var graphql2 = withDefaults3(request, {
+  headers: {
+    "user-agent": `octokit-graphql.js/${VERSION3} ${getUserAgent()}`
+  },
+  method: "POST",
+  url: "/graphql"
+});
+function withCustomRequest(customRequest) {
+  return withDefaults3(customRequest, {
+    method: "POST",
+    url: "/graphql"
+  });
+}
+
+// node_modules/.pnpm/@octokit+auth-token@6.0.0/node_modules/@octokit/auth-token/dist-bundle/index.js
+var b64url = "(?:[a-zA-Z0-9_-]+)";
+var sep = "\\.";
+var jwtRE = new RegExp(`^${b64url}${sep}${b64url}${sep}${b64url}$`);
+var isJWT = jwtRE.test.bind(jwtRE);
+async function auth(token) {
+  const isApp = isJWT(token);
+  const isInstallation = token.startsWith("v1.") || token.startsWith("ghs_");
+  const isUserToServer = token.startsWith("ghu_");
+  const tokenType = isApp ? "app" : isInstallation ? "installation" : isUserToServer ? "user-to-server" : "oauth";
+  return {
+    type: "token",
+    token,
+    tokenType
+  };
+}
+function withAuthorizationPrefix(token) {
+  if (token.split(/\./).length === 3) {
+    return `bearer ${token}`;
+  }
+  return `token ${token}`;
+}
+async function hook(token, request2, route, parameters) {
+  const endpoint2 = request2.endpoint.merge(
+    route,
+    parameters
+  );
+  endpoint2.headers.authorization = withAuthorizationPrefix(token);
+  return request2(endpoint2);
+}
+var createTokenAuth = function createTokenAuth2(token) {
+  if (!token) {
+    throw new Error("[@octokit/auth-token] No token passed to createTokenAuth");
+  }
+  if (typeof token !== "string") {
+    throw new Error(
+      "[@octokit/auth-token] Token passed to createTokenAuth is not a string"
+    );
+  }
+  token = token.replace(/^(token|bearer) +/i, "");
+  return Object.assign(auth.bind(null, token), {
+    hook: hook.bind(null, token)
+  });
+};
+
+// node_modules/.pnpm/@octokit+core@7.0.2/node_modules/@octokit/core/dist-src/version.js
+var VERSION4 = "7.0.2";
+
+// node_modules/.pnpm/@octokit+core@7.0.2/node_modules/@octokit/core/dist-src/index.js
+var noop = () => {
+};
+var consoleWarn = console.warn.bind(console);
+var consoleError = console.error.bind(console);
+var userAgentTrail = `octokit-core.js/${VERSION4} ${getUserAgent()}`;
+var Octokit = class {
+  static VERSION = VERSION4;
+  static defaults(defaults) {
+    const OctokitWithDefaults = class extends this {
+      constructor(...args) {
+        const options = args[0] || {};
+        if (typeof defaults === "function") {
+          super(defaults(options));
+          return;
+        }
+        super(
+          Object.assign(
+            {},
+            defaults,
+            options,
+            options.userAgent && defaults.userAgent ? {
+              userAgent: `${options.userAgent} ${defaults.userAgent}`
+            } : null
+          )
+        );
+      }
+    };
+    return OctokitWithDefaults;
+  }
+  static plugins = [];
+  /**
+   * Attach a plugin (or many) to your Octokit instance.
+   *
+   * @example
+   * const API = Octokit.plugin(plugin1, plugin2, plugin3, ...)
+   */
+  static plugin(...newPlugins) {
+    const currentPlugins = this.plugins;
+    const NewOctokit = class extends this {
+      static plugins = currentPlugins.concat(
+        newPlugins.filter((plugin) => !currentPlugins.includes(plugin))
+      );
+    };
+    return NewOctokit;
+  }
+  constructor(options = {}) {
+    const hook2 = new before_after_hook_default.Collection();
+    const requestDefaults = {
+      baseUrl: request.endpoint.DEFAULTS.baseUrl,
+      headers: {},
+      request: Object.assign({}, options.request, {
+        // @ts-ignore internal usage only, no need to type
+        hook: hook2.bind(null, "request")
+      }),
+      mediaType: {
+        previews: [],
+        format: ""
+      }
+    };
+    requestDefaults.headers["user-agent"] = options.userAgent ? `${options.userAgent} ${userAgentTrail}` : userAgentTrail;
+    if (options.baseUrl) {
+      requestDefaults.baseUrl = options.baseUrl;
+    }
+    if (options.previews) {
+      requestDefaults.mediaType.previews = options.previews;
+    }
+    if (options.timeZone) {
+      requestDefaults.headers["time-zone"] = options.timeZone;
+    }
+    this.request = request.defaults(requestDefaults);
+    this.graphql = withCustomRequest(this.request).defaults(requestDefaults);
+    this.log = Object.assign(
+      {
+        debug: noop,
+        info: noop,
+        warn: consoleWarn,
+        error: consoleError
+      },
+      options.log
+    );
+    this.hook = hook2;
+    if (!options.authStrategy) {
+      if (!options.auth) {
+        this.auth = async () => ({
+          type: "unauthenticated"
+        });
+      } else {
+        const auth2 = createTokenAuth(options.auth);
+        hook2.wrap("request", auth2.hook);
+        this.auth = auth2;
+      }
+    } else {
+      const { authStrategy, ...otherOptions } = options;
+      const auth2 = authStrategy(
+        Object.assign(
+          {
+            request: this.request,
+            log: this.log,
+            // we pass the current octokit instance as well as its constructor options
+            // to allow for authentication strategies that return a new octokit instance
+            // that shares the same internal state as the current one. The original
+            // requirement for this was the "event-octokit" authentication strategy
+            // of https://github.com/probot/octokit-auth-probot.
+            octokit: this,
+            octokitOptions: otherOptions
+          },
+          options.auth
+        )
+      );
+      hook2.wrap("request", auth2.hook);
+      this.auth = auth2;
+    }
+    const classConstructor = this.constructor;
+    for (let i = 0; i < classConstructor.plugins.length; ++i) {
+      Object.assign(this, classConstructor.plugins[i](this, options));
+    }
+  }
+  // assigned during constructor
+  request;
+  graphql;
+  log;
+  hook;
+  // TODO: type `octokit.auth` based on passed options.authStrategy
+  auth;
+};
+
+// node_modules/.pnpm/@octokit+plugin-request-log@6.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-request-log/dist-src/version.js
+var VERSION5 = "6.0.0";
+
+// node_modules/.pnpm/@octokit+plugin-request-log@6.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-request-log/dist-src/index.js
+function requestLog(octokit) {
+  octokit.hook.wrap("request", (request2, options) => {
+    octokit.log.debug("request", options);
+    const start2 = Date.now();
+    const requestOptions = octokit.request.endpoint.parse(options);
+    const path = requestOptions.url.replace(options.baseUrl, "");
+    return request2(options).then((response) => {
+      const requestId = response.headers["x-github-request-id"];
+      octokit.log.info(
+        `${requestOptions.method} ${path} - ${response.status} with id ${requestId} in ${Date.now() - start2}ms`
+      );
+      return response;
+    }).catch((error) => {
+      const requestId = error.response?.headers["x-github-request-id"] || "UNKNOWN";
+      octokit.log.error(
+        `${requestOptions.method} ${path} - ${error.status} with id ${requestId} in ${Date.now() - start2}ms`
+      );
+      throw error;
+    });
+  });
+}
+requestLog.VERSION = VERSION5;
+
+// node_modules/.pnpm/@octokit+plugin-paginate-rest@13.1.1_@octokit+core@7.0.2/node_modules/@octokit/plugin-paginate-rest/dist-bundle/index.js
+var VERSION6 = "0.0.0-development";
+function normalizePaginatedListResponse(response) {
+  if (!response.data) {
+    return {
+      ...response,
+      data: []
+    };
+  }
+  const responseNeedsNormalization = ("total_count" in response.data || "total_commits" in response.data) && !("url" in response.data);
+  if (!responseNeedsNormalization) return response;
+  const incompleteResults = response.data.incomplete_results;
+  const repositorySelection = response.data.repository_selection;
+  const totalCount = response.data.total_count;
+  const totalCommits = response.data.total_commits;
+  delete response.data.incomplete_results;
+  delete response.data.repository_selection;
+  delete response.data.total_count;
+  delete response.data.total_commits;
+  const namespaceKey = Object.keys(response.data)[0];
+  const data = response.data[namespaceKey];
+  response.data = data;
+  if (typeof incompleteResults !== "undefined") {
+    response.data.incomplete_results = incompleteResults;
+  }
+  if (typeof repositorySelection !== "undefined") {
+    response.data.repository_selection = repositorySelection;
+  }
+  response.data.total_count = totalCount;
+  response.data.total_commits = totalCommits;
+  return response;
+}
+function iterator(octokit, route, parameters) {
+  const options = typeof route === "function" ? route.endpoint(parameters) : octokit.request.endpoint(route, parameters);
+  const requestMethod = typeof route === "function" ? route : octokit.request;
+  const method = options.method;
+  const headers = options.headers;
+  let url = options.url;
+  return {
+    [Symbol.asyncIterator]: () => ({
+      async next() {
+        if (!url) return { done: true };
+        try {
+          const response = await requestMethod({ method, url, headers });
+          const normalizedResponse = normalizePaginatedListResponse(response);
+          url = ((normalizedResponse.headers.link || "").match(
+            /<([^<>]+)>;\s*rel="next"/
+          ) || [])[1];
+          if (!url && "total_commits" in normalizedResponse.data) {
+            const parsedUrl = new URL(normalizedResponse.url);
+            const params = parsedUrl.searchParams;
+            const page = parseInt(params.get("page") || "1", 10);
+            const per_page = parseInt(params.get("per_page") || "250", 10);
+            if (page * per_page < normalizedResponse.data.total_commits) {
+              params.set("page", String(page + 1));
+              url = parsedUrl.toString();
+            }
+          }
+          return { value: normalizedResponse };
+        } catch (error) {
+          if (error.status !== 409) throw error;
+          url = "";
+          return {
+            value: {
+              status: 200,
+              headers: {},
+              data: []
+            }
+          };
+        }
+      }
+    })
+  };
+}
+function paginate(octokit, route, parameters, mapFn) {
+  if (typeof parameters === "function") {
+    mapFn = parameters;
+    parameters = void 0;
+  }
+  return gather(
+    octokit,
+    [],
+    iterator(octokit, route, parameters)[Symbol.asyncIterator](),
+    mapFn
+  );
+}
+function gather(octokit, results, iterator2, mapFn) {
+  return iterator2.next().then((result) => {
+    if (result.done) {
+      return results;
+    }
+    let earlyExit = false;
+    function done() {
+      earlyExit = true;
+    }
+    results = results.concat(
+      mapFn ? mapFn(result.value, done) : result.value.data
+    );
+    if (earlyExit) {
+      return results;
+    }
+    return gather(octokit, results, iterator2, mapFn);
+  });
+}
+var composePaginateRest = Object.assign(paginate, {
+  iterator
+});
+function paginateRest(octokit) {
+  return {
+    paginate: Object.assign(paginate.bind(null, octokit), {
+      iterator: iterator.bind(null, octokit)
+    })
+  };
+}
+paginateRest.VERSION = VERSION6;
+
+// node_modules/.pnpm/@octokit+plugin-rest-endpoint-methods@16.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-rest-endpoint-methods/dist-src/version.js
+var VERSION7 = "16.0.0";
+
+// node_modules/.pnpm/@octokit+plugin-rest-endpoint-methods@16.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-rest-endpoint-methods/dist-src/generated/endpoints.js
+var Endpoints = {
+  actions: {
+    addCustomLabelsToSelfHostedRunnerForOrg: [
+      "POST /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    addCustomLabelsToSelfHostedRunnerForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    addRepoAccessToSelfHostedRunnerGroupInOrg: [
+      "PUT /orgs/{org}/actions/runner-groups/{runner_group_id}/repositories/{repository_id}"
+    ],
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    addSelectedRepoToOrgVariable: [
+      "PUT /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
+    ],
+    approveWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/approve"
+    ],
+    cancelWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/cancel"
+    ],
+    createEnvironmentVariable: [
+      "POST /repos/{owner}/{repo}/environments/{environment_name}/variables"
+    ],
+    createHostedRunnerForOrg: ["POST /orgs/{org}/actions/hosted-runners"],
+    createOrUpdateEnvironmentSecret: [
+      "PUT /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    createOrUpdateOrgSecret: ["PUT /orgs/{org}/actions/secrets/{secret_name}"],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}"
+    ],
+    createOrgVariable: ["POST /orgs/{org}/actions/variables"],
+    createRegistrationTokenForOrg: [
+      "POST /orgs/{org}/actions/runners/registration-token"
+    ],
+    createRegistrationTokenForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/registration-token"
+    ],
+    createRemoveTokenForOrg: ["POST /orgs/{org}/actions/runners/remove-token"],
+    createRemoveTokenForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/remove-token"
+    ],
+    createRepoVariable: ["POST /repos/{owner}/{repo}/actions/variables"],
+    createWorkflowDispatch: [
+      "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches"
+    ],
+    deleteActionsCacheById: [
+      "DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}"
+    ],
+    deleteActionsCacheByKey: [
+      "DELETE /repos/{owner}/{repo}/actions/caches{?key,ref}"
+    ],
+    deleteArtifact: [
+      "DELETE /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"
+    ],
+    deleteEnvironmentSecret: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    deleteEnvironmentVariable: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
+    ],
+    deleteHostedRunnerForOrg: [
+      "DELETE /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/actions/secrets/{secret_name}"],
+    deleteOrgVariable: ["DELETE /orgs/{org}/actions/variables/{name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}"
+    ],
+    deleteRepoVariable: [
+      "DELETE /repos/{owner}/{repo}/actions/variables/{name}"
+    ],
+    deleteSelfHostedRunnerFromOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}"
+    ],
+    deleteSelfHostedRunnerFromRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}"
+    ],
+    deleteWorkflowRun: ["DELETE /repos/{owner}/{repo}/actions/runs/{run_id}"],
+    deleteWorkflowRunLogs: [
+      "DELETE /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
+    ],
+    disableSelectedRepositoryGithubActionsOrganization: [
+      "DELETE /orgs/{org}/actions/permissions/repositories/{repository_id}"
+    ],
+    disableWorkflow: [
+      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/disable"
+    ],
+    downloadArtifact: [
+      "GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}/{archive_format}"
+    ],
+    downloadJobLogsForWorkflowRun: [
+      "GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs"
+    ],
+    downloadWorkflowRunAttemptLogs: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/logs"
+    ],
+    downloadWorkflowRunLogs: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/logs"
+    ],
+    enableSelectedRepositoryGithubActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/repositories/{repository_id}"
+    ],
+    enableWorkflow: [
+      "PUT /repos/{owner}/{repo}/actions/workflows/{workflow_id}/enable"
+    ],
+    forceCancelWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel"
+    ],
+    generateRunnerJitconfigForOrg: [
+      "POST /orgs/{org}/actions/runners/generate-jitconfig"
+    ],
+    generateRunnerJitconfigForRepo: [
+      "POST /repos/{owner}/{repo}/actions/runners/generate-jitconfig"
+    ],
+    getActionsCacheList: ["GET /repos/{owner}/{repo}/actions/caches"],
+    getActionsCacheUsage: ["GET /repos/{owner}/{repo}/actions/cache/usage"],
+    getActionsCacheUsageByRepoForOrg: [
+      "GET /orgs/{org}/actions/cache/usage-by-repository"
+    ],
+    getActionsCacheUsageForOrg: ["GET /orgs/{org}/actions/cache/usage"],
+    getAllowedActionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/selected-actions"
+    ],
+    getAllowedActionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/selected-actions"
+    ],
+    getArtifact: ["GET /repos/{owner}/{repo}/actions/artifacts/{artifact_id}"],
+    getCustomOidcSubClaimForRepo: [
+      "GET /repos/{owner}/{repo}/actions/oidc/customization/sub"
+    ],
+    getEnvironmentPublicKey: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/public-key"
+    ],
+    getEnvironmentSecret: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets/{secret_name}"
+    ],
+    getEnvironmentVariable: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
+    ],
+    getGithubActionsDefaultWorkflowPermissionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/workflow"
+    ],
+    getGithubActionsDefaultWorkflowPermissionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/workflow"
+    ],
+    getGithubActionsPermissionsOrganization: [
+      "GET /orgs/{org}/actions/permissions"
+    ],
+    getGithubActionsPermissionsRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions"
+    ],
+    getHostedRunnerForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
+    ],
+    getHostedRunnersGithubOwnedImagesForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/images/github-owned"
+    ],
+    getHostedRunnersLimitsForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/limits"
+    ],
+    getHostedRunnersMachineSpecsForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/machine-sizes"
+    ],
+    getHostedRunnersPartnerImagesForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/images/partner"
+    ],
+    getHostedRunnersPlatformsForOrg: [
+      "GET /orgs/{org}/actions/hosted-runners/platforms"
+    ],
+    getJobForWorkflowRun: ["GET /repos/{owner}/{repo}/actions/jobs/{job_id}"],
+    getOrgPublicKey: ["GET /orgs/{org}/actions/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/actions/secrets/{secret_name}"],
+    getOrgVariable: ["GET /orgs/{org}/actions/variables/{name}"],
+    getPendingDeploymentsForRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
+    ],
+    getRepoPermissions: [
+      "GET /repos/{owner}/{repo}/actions/permissions",
+      {},
+      { renamed: ["actions", "getGithubActionsPermissionsRepository"] }
+    ],
+    getRepoPublicKey: ["GET /repos/{owner}/{repo}/actions/secrets/public-key"],
+    getRepoSecret: ["GET /repos/{owner}/{repo}/actions/secrets/{secret_name}"],
+    getRepoVariable: ["GET /repos/{owner}/{repo}/actions/variables/{name}"],
+    getReviewsForRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals"
+    ],
+    getSelfHostedRunnerForOrg: ["GET /orgs/{org}/actions/runners/{runner_id}"],
+    getSelfHostedRunnerForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}"
+    ],
+    getWorkflow: ["GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}"],
+    getWorkflowAccessToRepository: [
+      "GET /repos/{owner}/{repo}/actions/permissions/access"
+    ],
+    getWorkflowRun: ["GET /repos/{owner}/{repo}/actions/runs/{run_id}"],
+    getWorkflowRunAttempt: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}"
+    ],
+    getWorkflowRunUsage: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/timing"
+    ],
+    getWorkflowUsage: [
+      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/timing"
+    ],
+    listArtifactsForRepo: ["GET /repos/{owner}/{repo}/actions/artifacts"],
+    listEnvironmentSecrets: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/secrets"
+    ],
+    listEnvironmentVariables: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/variables"
+    ],
+    listGithubHostedRunnersInGroupForOrg: [
+      "GET /orgs/{org}/actions/runner-groups/{runner_group_id}/hosted-runners"
+    ],
+    listHostedRunnersForOrg: ["GET /orgs/{org}/actions/hosted-runners"],
+    listJobsForWorkflowRun: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs"
+    ],
+    listJobsForWorkflowRunAttempt: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs"
+    ],
+    listLabelsForSelfHostedRunnerForOrg: [
+      "GET /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    listLabelsForSelfHostedRunnerForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    listOrgSecrets: ["GET /orgs/{org}/actions/secrets"],
+    listOrgVariables: ["GET /orgs/{org}/actions/variables"],
+    listRepoOrganizationSecrets: [
+      "GET /repos/{owner}/{repo}/actions/organization-secrets"
+    ],
+    listRepoOrganizationVariables: [
+      "GET /repos/{owner}/{repo}/actions/organization-variables"
+    ],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/actions/secrets"],
+    listRepoVariables: ["GET /repos/{owner}/{repo}/actions/variables"],
+    listRepoWorkflows: ["GET /repos/{owner}/{repo}/actions/workflows"],
+    listRunnerApplicationsForOrg: ["GET /orgs/{org}/actions/runners/downloads"],
+    listRunnerApplicationsForRepo: [
+      "GET /repos/{owner}/{repo}/actions/runners/downloads"
+    ],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/actions/secrets/{secret_name}/repositories"
+    ],
+    listSelectedReposForOrgVariable: [
+      "GET /orgs/{org}/actions/variables/{name}/repositories"
+    ],
+    listSelectedRepositoriesEnabledGithubActionsOrganization: [
+      "GET /orgs/{org}/actions/permissions/repositories"
+    ],
+    listSelfHostedRunnersForOrg: ["GET /orgs/{org}/actions/runners"],
+    listSelfHostedRunnersForRepo: ["GET /repos/{owner}/{repo}/actions/runners"],
+    listWorkflowRunArtifacts: [
+      "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts"
+    ],
+    listWorkflowRuns: [
+      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs"
+    ],
+    listWorkflowRunsForRepo: ["GET /repos/{owner}/{repo}/actions/runs"],
+    reRunJobForWorkflowRun: [
+      "POST /repos/{owner}/{repo}/actions/jobs/{job_id}/rerun"
+    ],
+    reRunWorkflow: ["POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"],
+    reRunWorkflowFailedJobs: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs"
+    ],
+    removeAllCustomLabelsFromSelfHostedRunnerForOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    removeAllCustomLabelsFromSelfHostedRunnerForRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    removeCustomLabelFromSelfHostedRunnerForOrg: [
+      "DELETE /orgs/{org}/actions/runners/{runner_id}/labels/{name}"
+    ],
+    removeCustomLabelFromSelfHostedRunnerForRepo: [
+      "DELETE /repos/{owner}/{repo}/actions/runners/{runner_id}/labels/{name}"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/actions/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    removeSelectedRepoFromOrgVariable: [
+      "DELETE /orgs/{org}/actions/variables/{name}/repositories/{repository_id}"
+    ],
+    reviewCustomGatesForRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/deployment_protection_rule"
+    ],
+    reviewPendingDeploymentsForRun: [
+      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments"
+    ],
+    setAllowedActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/selected-actions"
+    ],
+    setAllowedActionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/selected-actions"
+    ],
+    setCustomLabelsForSelfHostedRunnerForOrg: [
+      "PUT /orgs/{org}/actions/runners/{runner_id}/labels"
+    ],
+    setCustomLabelsForSelfHostedRunnerForRepo: [
+      "PUT /repos/{owner}/{repo}/actions/runners/{runner_id}/labels"
+    ],
+    setCustomOidcSubClaimForRepo: [
+      "PUT /repos/{owner}/{repo}/actions/oidc/customization/sub"
+    ],
+    setGithubActionsDefaultWorkflowPermissionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/workflow"
+    ],
+    setGithubActionsDefaultWorkflowPermissionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/workflow"
+    ],
+    setGithubActionsPermissionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions"
+    ],
+    setGithubActionsPermissionsRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/actions/secrets/{secret_name}/repositories"
+    ],
+    setSelectedReposForOrgVariable: [
+      "PUT /orgs/{org}/actions/variables/{name}/repositories"
+    ],
+    setSelectedRepositoriesEnabledGithubActionsOrganization: [
+      "PUT /orgs/{org}/actions/permissions/repositories"
+    ],
+    setWorkflowAccessToRepository: [
+      "PUT /repos/{owner}/{repo}/actions/permissions/access"
+    ],
+    updateEnvironmentVariable: [
+      "PATCH /repos/{owner}/{repo}/environments/{environment_name}/variables/{name}"
+    ],
+    updateHostedRunnerForOrg: [
+      "PATCH /orgs/{org}/actions/hosted-runners/{hosted_runner_id}"
+    ],
+    updateOrgVariable: ["PATCH /orgs/{org}/actions/variables/{name}"],
+    updateRepoVariable: [
+      "PATCH /repos/{owner}/{repo}/actions/variables/{name}"
+    ]
+  },
+  activity: {
+    checkRepoIsStarredByAuthenticatedUser: ["GET /user/starred/{owner}/{repo}"],
+    deleteRepoSubscription: ["DELETE /repos/{owner}/{repo}/subscription"],
+    deleteThreadSubscription: [
+      "DELETE /notifications/threads/{thread_id}/subscription"
+    ],
+    getFeeds: ["GET /feeds"],
+    getRepoSubscription: ["GET /repos/{owner}/{repo}/subscription"],
+    getThread: ["GET /notifications/threads/{thread_id}"],
+    getThreadSubscriptionForAuthenticatedUser: [
+      "GET /notifications/threads/{thread_id}/subscription"
+    ],
+    listEventsForAuthenticatedUser: ["GET /users/{username}/events"],
+    listNotificationsForAuthenticatedUser: ["GET /notifications"],
+    listOrgEventsForAuthenticatedUser: [
+      "GET /users/{username}/events/orgs/{org}"
+    ],
+    listPublicEvents: ["GET /events"],
+    listPublicEventsForRepoNetwork: ["GET /networks/{owner}/{repo}/events"],
+    listPublicEventsForUser: ["GET /users/{username}/events/public"],
+    listPublicOrgEvents: ["GET /orgs/{org}/events"],
+    listReceivedEventsForUser: ["GET /users/{username}/received_events"],
+    listReceivedPublicEventsForUser: [
+      "GET /users/{username}/received_events/public"
+    ],
+    listRepoEvents: ["GET /repos/{owner}/{repo}/events"],
+    listRepoNotificationsForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/notifications"
+    ],
+    listReposStarredByAuthenticatedUser: ["GET /user/starred"],
+    listReposStarredByUser: ["GET /users/{username}/starred"],
+    listReposWatchedByUser: ["GET /users/{username}/subscriptions"],
+    listStargazersForRepo: ["GET /repos/{owner}/{repo}/stargazers"],
+    listWatchedReposForAuthenticatedUser: ["GET /user/subscriptions"],
+    listWatchersForRepo: ["GET /repos/{owner}/{repo}/subscribers"],
+    markNotificationsAsRead: ["PUT /notifications"],
+    markRepoNotificationsAsRead: ["PUT /repos/{owner}/{repo}/notifications"],
+    markThreadAsDone: ["DELETE /notifications/threads/{thread_id}"],
+    markThreadAsRead: ["PATCH /notifications/threads/{thread_id}"],
+    setRepoSubscription: ["PUT /repos/{owner}/{repo}/subscription"],
+    setThreadSubscription: [
+      "PUT /notifications/threads/{thread_id}/subscription"
+    ],
+    starRepoForAuthenticatedUser: ["PUT /user/starred/{owner}/{repo}"],
+    unstarRepoForAuthenticatedUser: ["DELETE /user/starred/{owner}/{repo}"]
+  },
+  apps: {
+    addRepoToInstallation: [
+      "PUT /user/installations/{installation_id}/repositories/{repository_id}",
+      {},
+      { renamed: ["apps", "addRepoToInstallationForAuthenticatedUser"] }
+    ],
+    addRepoToInstallationForAuthenticatedUser: [
+      "PUT /user/installations/{installation_id}/repositories/{repository_id}"
+    ],
+    checkToken: ["POST /applications/{client_id}/token"],
+    createFromManifest: ["POST /app-manifests/{code}/conversions"],
+    createInstallationAccessToken: [
+      "POST /app/installations/{installation_id}/access_tokens"
+    ],
+    deleteAuthorization: ["DELETE /applications/{client_id}/grant"],
+    deleteInstallation: ["DELETE /app/installations/{installation_id}"],
+    deleteToken: ["DELETE /applications/{client_id}/token"],
+    getAuthenticated: ["GET /app"],
+    getBySlug: ["GET /apps/{app_slug}"],
+    getInstallation: ["GET /app/installations/{installation_id}"],
+    getOrgInstallation: ["GET /orgs/{org}/installation"],
+    getRepoInstallation: ["GET /repos/{owner}/{repo}/installation"],
+    getSubscriptionPlanForAccount: [
+      "GET /marketplace_listing/accounts/{account_id}"
+    ],
+    getSubscriptionPlanForAccountStubbed: [
+      "GET /marketplace_listing/stubbed/accounts/{account_id}"
+    ],
+    getUserInstallation: ["GET /users/{username}/installation"],
+    getWebhookConfigForApp: ["GET /app/hook/config"],
+    getWebhookDelivery: ["GET /app/hook/deliveries/{delivery_id}"],
+    listAccountsForPlan: ["GET /marketplace_listing/plans/{plan_id}/accounts"],
+    listAccountsForPlanStubbed: [
+      "GET /marketplace_listing/stubbed/plans/{plan_id}/accounts"
+    ],
+    listInstallationReposForAuthenticatedUser: [
+      "GET /user/installations/{installation_id}/repositories"
+    ],
+    listInstallationRequestsForAuthenticatedApp: [
+      "GET /app/installation-requests"
+    ],
+    listInstallations: ["GET /app/installations"],
+    listInstallationsForAuthenticatedUser: ["GET /user/installations"],
+    listPlans: ["GET /marketplace_listing/plans"],
+    listPlansStubbed: ["GET /marketplace_listing/stubbed/plans"],
+    listReposAccessibleToInstallation: ["GET /installation/repositories"],
+    listSubscriptionsForAuthenticatedUser: ["GET /user/marketplace_purchases"],
+    listSubscriptionsForAuthenticatedUserStubbed: [
+      "GET /user/marketplace_purchases/stubbed"
+    ],
+    listWebhookDeliveries: ["GET /app/hook/deliveries"],
+    redeliverWebhookDelivery: [
+      "POST /app/hook/deliveries/{delivery_id}/attempts"
+    ],
+    removeRepoFromInstallation: [
+      "DELETE /user/installations/{installation_id}/repositories/{repository_id}",
+      {},
+      { renamed: ["apps", "removeRepoFromInstallationForAuthenticatedUser"] }
+    ],
+    removeRepoFromInstallationForAuthenticatedUser: [
+      "DELETE /user/installations/{installation_id}/repositories/{repository_id}"
+    ],
+    resetToken: ["PATCH /applications/{client_id}/token"],
+    revokeInstallationAccessToken: ["DELETE /installation/token"],
+    scopeToken: ["POST /applications/{client_id}/token/scoped"],
+    suspendInstallation: ["PUT /app/installations/{installation_id}/suspended"],
+    unsuspendInstallation: [
+      "DELETE /app/installations/{installation_id}/suspended"
+    ],
+    updateWebhookConfigForApp: ["PATCH /app/hook/config"]
+  },
+  billing: {
+    getGithubActionsBillingOrg: ["GET /orgs/{org}/settings/billing/actions"],
+    getGithubActionsBillingUser: [
+      "GET /users/{username}/settings/billing/actions"
+    ],
+    getGithubBillingUsageReportOrg: [
+      "GET /organizations/{org}/settings/billing/usage"
+    ],
+    getGithubBillingUsageReportUser: [
+      "GET /users/{username}/settings/billing/usage"
+    ],
+    getGithubPackagesBillingOrg: ["GET /orgs/{org}/settings/billing/packages"],
+    getGithubPackagesBillingUser: [
+      "GET /users/{username}/settings/billing/packages"
+    ],
+    getSharedStorageBillingOrg: [
+      "GET /orgs/{org}/settings/billing/shared-storage"
+    ],
+    getSharedStorageBillingUser: [
+      "GET /users/{username}/settings/billing/shared-storage"
+    ]
+  },
+  campaigns: {
+    createCampaign: ["POST /orgs/{org}/campaigns"],
+    deleteCampaign: ["DELETE /orgs/{org}/campaigns/{campaign_number}"],
+    getCampaignSummary: ["GET /orgs/{org}/campaigns/{campaign_number}"],
+    listOrgCampaigns: ["GET /orgs/{org}/campaigns"],
+    updateCampaign: ["PATCH /orgs/{org}/campaigns/{campaign_number}"]
+  },
+  checks: {
+    create: ["POST /repos/{owner}/{repo}/check-runs"],
+    createSuite: ["POST /repos/{owner}/{repo}/check-suites"],
+    get: ["GET /repos/{owner}/{repo}/check-runs/{check_run_id}"],
+    getSuite: ["GET /repos/{owner}/{repo}/check-suites/{check_suite_id}"],
+    listAnnotations: [
+      "GET /repos/{owner}/{repo}/check-runs/{check_run_id}/annotations"
+    ],
+    listForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-runs"],
+    listForSuite: [
+      "GET /repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs"
+    ],
+    listSuitesForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/check-suites"],
+    rerequestRun: [
+      "POST /repos/{owner}/{repo}/check-runs/{check_run_id}/rerequest"
+    ],
+    rerequestSuite: [
+      "POST /repos/{owner}/{repo}/check-suites/{check_suite_id}/rerequest"
+    ],
+    setSuitesPreferences: [
+      "PATCH /repos/{owner}/{repo}/check-suites/preferences"
+    ],
+    update: ["PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}"]
+  },
+  codeScanning: {
+    commitAutofix: [
+      "POST /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix/commits"
+    ],
+    createAutofix: [
+      "POST /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix"
+    ],
+    createVariantAnalysis: [
+      "POST /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses"
+    ],
+    deleteAnalysis: [
+      "DELETE /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}{?confirm_delete}"
+    ],
+    deleteCodeqlDatabase: [
+      "DELETE /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"
+    ],
+    getAlert: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}",
+      {},
+      { renamedParameters: { alert_id: "alert_number" } }
+    ],
+    getAnalysis: [
+      "GET /repos/{owner}/{repo}/code-scanning/analyses/{analysis_id}"
+    ],
+    getAutofix: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/autofix"
+    ],
+    getCodeqlDatabase: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases/{language}"
+    ],
+    getDefaultSetup: ["GET /repos/{owner}/{repo}/code-scanning/default-setup"],
+    getSarif: ["GET /repos/{owner}/{repo}/code-scanning/sarifs/{sarif_id}"],
+    getVariantAnalysis: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses/{codeql_variant_analysis_id}"
+    ],
+    getVariantAnalysisRepoTask: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/variant-analyses/{codeql_variant_analysis_id}/repos/{repo_owner}/{repo_name}"
+    ],
+    listAlertInstances: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/code-scanning/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/code-scanning/alerts"],
+    listAlertsInstances: [
+      "GET /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}/instances",
+      {},
+      { renamed: ["codeScanning", "listAlertInstances"] }
+    ],
+    listCodeqlDatabases: [
+      "GET /repos/{owner}/{repo}/code-scanning/codeql/databases"
+    ],
+    listRecentAnalyses: ["GET /repos/{owner}/{repo}/code-scanning/analyses"],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/code-scanning/alerts/{alert_number}"
+    ],
+    updateDefaultSetup: [
+      "PATCH /repos/{owner}/{repo}/code-scanning/default-setup"
+    ],
+    uploadSarif: ["POST /repos/{owner}/{repo}/code-scanning/sarifs"]
+  },
+  codeSecurity: {
+    attachConfiguration: [
+      "POST /orgs/{org}/code-security/configurations/{configuration_id}/attach"
+    ],
+    attachEnterpriseConfiguration: [
+      "POST /enterprises/{enterprise}/code-security/configurations/{configuration_id}/attach"
+    ],
+    createConfiguration: ["POST /orgs/{org}/code-security/configurations"],
+    createConfigurationForEnterprise: [
+      "POST /enterprises/{enterprise}/code-security/configurations"
+    ],
+    deleteConfiguration: [
+      "DELETE /orgs/{org}/code-security/configurations/{configuration_id}"
+    ],
+    deleteConfigurationForEnterprise: [
+      "DELETE /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
+    ],
+    detachConfiguration: [
+      "DELETE /orgs/{org}/code-security/configurations/detach"
+    ],
+    getConfiguration: [
+      "GET /orgs/{org}/code-security/configurations/{configuration_id}"
+    ],
+    getConfigurationForRepository: [
+      "GET /repos/{owner}/{repo}/code-security-configuration"
+    ],
+    getConfigurationsForEnterprise: [
+      "GET /enterprises/{enterprise}/code-security/configurations"
+    ],
+    getConfigurationsForOrg: ["GET /orgs/{org}/code-security/configurations"],
+    getDefaultConfigurations: [
+      "GET /orgs/{org}/code-security/configurations/defaults"
+    ],
+    getDefaultConfigurationsForEnterprise: [
+      "GET /enterprises/{enterprise}/code-security/configurations/defaults"
+    ],
+    getRepositoriesForConfiguration: [
+      "GET /orgs/{org}/code-security/configurations/{configuration_id}/repositories"
+    ],
+    getRepositoriesForEnterpriseConfiguration: [
+      "GET /enterprises/{enterprise}/code-security/configurations/{configuration_id}/repositories"
+    ],
+    getSingleConfigurationForEnterprise: [
+      "GET /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
+    ],
+    setConfigurationAsDefault: [
+      "PUT /orgs/{org}/code-security/configurations/{configuration_id}/defaults"
+    ],
+    setConfigurationAsDefaultForEnterprise: [
+      "PUT /enterprises/{enterprise}/code-security/configurations/{configuration_id}/defaults"
+    ],
+    updateConfiguration: [
+      "PATCH /orgs/{org}/code-security/configurations/{configuration_id}"
+    ],
+    updateEnterpriseConfiguration: [
+      "PATCH /enterprises/{enterprise}/code-security/configurations/{configuration_id}"
+    ]
+  },
+  codesOfConduct: {
+    getAllCodesOfConduct: ["GET /codes_of_conduct"],
+    getConductCode: ["GET /codes_of_conduct/{key}"]
+  },
+  codespaces: {
+    addRepositoryForSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    checkPermissionsForDevcontainer: [
+      "GET /repos/{owner}/{repo}/codespaces/permissions_check"
+    ],
+    codespaceMachinesForAuthenticatedUser: [
+      "GET /user/codespaces/{codespace_name}/machines"
+    ],
+    createForAuthenticatedUser: ["POST /user/codespaces"],
+    createOrUpdateOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}"
+    ],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    createOrUpdateSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}"
+    ],
+    createWithPrForAuthenticatedUser: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/codespaces"
+    ],
+    createWithRepoForAuthenticatedUser: [
+      "POST /repos/{owner}/{repo}/codespaces"
+    ],
+    deleteForAuthenticatedUser: ["DELETE /user/codespaces/{codespace_name}"],
+    deleteFromOrganization: [
+      "DELETE /orgs/{org}/members/{username}/codespaces/{codespace_name}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/codespaces/secrets/{secret_name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    deleteSecretForAuthenticatedUser: [
+      "DELETE /user/codespaces/secrets/{secret_name}"
+    ],
+    exportForAuthenticatedUser: [
+      "POST /user/codespaces/{codespace_name}/exports"
+    ],
+    getCodespacesForUserInOrg: [
+      "GET /orgs/{org}/members/{username}/codespaces"
+    ],
+    getExportDetailsForAuthenticatedUser: [
+      "GET /user/codespaces/{codespace_name}/exports/{export_id}"
+    ],
+    getForAuthenticatedUser: ["GET /user/codespaces/{codespace_name}"],
+    getOrgPublicKey: ["GET /orgs/{org}/codespaces/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/codespaces/secrets/{secret_name}"],
+    getPublicKeyForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/public-key"
+    ],
+    getRepoPublicKey: [
+      "GET /repos/{owner}/{repo}/codespaces/secrets/public-key"
+    ],
+    getRepoSecret: [
+      "GET /repos/{owner}/{repo}/codespaces/secrets/{secret_name}"
+    ],
+    getSecretForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/{secret_name}"
+    ],
+    listDevcontainersInRepositoryForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/devcontainers"
+    ],
+    listForAuthenticatedUser: ["GET /user/codespaces"],
+    listInOrganization: [
+      "GET /orgs/{org}/codespaces",
+      {},
+      { renamedParameters: { org_id: "org" } }
+    ],
+    listInRepositoryForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces"
+    ],
+    listOrgSecrets: ["GET /orgs/{org}/codespaces/secrets"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/codespaces/secrets"],
+    listRepositoriesForSecretForAuthenticatedUser: [
+      "GET /user/codespaces/secrets/{secret_name}/repositories"
+    ],
+    listSecretsForAuthenticatedUser: ["GET /user/codespaces/secrets"],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
+    ],
+    preFlightWithRepoForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/new"
+    ],
+    publishForAuthenticatedUser: [
+      "POST /user/codespaces/{codespace_name}/publish"
+    ],
+    removeRepositoryForSecretForAuthenticatedUser: [
+      "DELETE /user/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/codespaces/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    repoMachinesForAuthenticatedUser: [
+      "GET /repos/{owner}/{repo}/codespaces/machines"
+    ],
+    setRepositoriesForSecretForAuthenticatedUser: [
+      "PUT /user/codespaces/secrets/{secret_name}/repositories"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/codespaces/secrets/{secret_name}/repositories"
+    ],
+    startForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/start"],
+    stopForAuthenticatedUser: ["POST /user/codespaces/{codespace_name}/stop"],
+    stopInOrganization: [
+      "POST /orgs/{org}/members/{username}/codespaces/{codespace_name}/stop"
+    ],
+    updateForAuthenticatedUser: ["PATCH /user/codespaces/{codespace_name}"]
+  },
+  copilot: {
+    addCopilotSeatsForTeams: [
+      "POST /orgs/{org}/copilot/billing/selected_teams"
+    ],
+    addCopilotSeatsForUsers: [
+      "POST /orgs/{org}/copilot/billing/selected_users"
+    ],
+    cancelCopilotSeatAssignmentForTeams: [
+      "DELETE /orgs/{org}/copilot/billing/selected_teams"
+    ],
+    cancelCopilotSeatAssignmentForUsers: [
+      "DELETE /orgs/{org}/copilot/billing/selected_users"
+    ],
+    copilotMetricsForOrganization: ["GET /orgs/{org}/copilot/metrics"],
+    copilotMetricsForTeam: ["GET /orgs/{org}/team/{team_slug}/copilot/metrics"],
+    getCopilotOrganizationDetails: ["GET /orgs/{org}/copilot/billing"],
+    getCopilotSeatDetailsForUser: [
+      "GET /orgs/{org}/members/{username}/copilot"
+    ],
+    listCopilotSeats: ["GET /orgs/{org}/copilot/billing/seats"]
+  },
+  credentials: { revoke: ["POST /credentials/revoke"] },
+  dependabot: {
+    addSelectedRepoToOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    createOrUpdateOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}"
+    ],
+    createOrUpdateRepoSecret: [
+      "PUT /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    deleteOrgSecret: ["DELETE /orgs/{org}/dependabot/secrets/{secret_name}"],
+    deleteRepoSecret: [
+      "DELETE /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    getAlert: ["GET /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"],
+    getOrgPublicKey: ["GET /orgs/{org}/dependabot/secrets/public-key"],
+    getOrgSecret: ["GET /orgs/{org}/dependabot/secrets/{secret_name}"],
+    getRepoPublicKey: [
+      "GET /repos/{owner}/{repo}/dependabot/secrets/public-key"
+    ],
+    getRepoSecret: [
+      "GET /repos/{owner}/{repo}/dependabot/secrets/{secret_name}"
+    ],
+    listAlertsForEnterprise: [
+      "GET /enterprises/{enterprise}/dependabot/alerts"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/dependabot/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/dependabot/alerts"],
+    listOrgSecrets: ["GET /orgs/{org}/dependabot/secrets"],
+    listRepoSecrets: ["GET /repos/{owner}/{repo}/dependabot/secrets"],
+    listSelectedReposForOrgSecret: [
+      "GET /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
+    ],
+    removeSelectedRepoFromOrgSecret: [
+      "DELETE /orgs/{org}/dependabot/secrets/{secret_name}/repositories/{repository_id}"
+    ],
+    setSelectedReposForOrgSecret: [
+      "PUT /orgs/{org}/dependabot/secrets/{secret_name}/repositories"
+    ],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}"
+    ]
+  },
+  dependencyGraph: {
+    createRepositorySnapshot: [
+      "POST /repos/{owner}/{repo}/dependency-graph/snapshots"
+    ],
+    diffRange: [
+      "GET /repos/{owner}/{repo}/dependency-graph/compare/{basehead}"
+    ],
+    exportSbom: ["GET /repos/{owner}/{repo}/dependency-graph/sbom"]
+  },
+  emojis: { get: ["GET /emojis"] },
+  gists: {
+    checkIsStarred: ["GET /gists/{gist_id}/star"],
+    create: ["POST /gists"],
+    createComment: ["POST /gists/{gist_id}/comments"],
+    delete: ["DELETE /gists/{gist_id}"],
+    deleteComment: ["DELETE /gists/{gist_id}/comments/{comment_id}"],
+    fork: ["POST /gists/{gist_id}/forks"],
+    get: ["GET /gists/{gist_id}"],
+    getComment: ["GET /gists/{gist_id}/comments/{comment_id}"],
+    getRevision: ["GET /gists/{gist_id}/{sha}"],
+    list: ["GET /gists"],
+    listComments: ["GET /gists/{gist_id}/comments"],
+    listCommits: ["GET /gists/{gist_id}/commits"],
+    listForUser: ["GET /users/{username}/gists"],
+    listForks: ["GET /gists/{gist_id}/forks"],
+    listPublic: ["GET /gists/public"],
+    listStarred: ["GET /gists/starred"],
+    star: ["PUT /gists/{gist_id}/star"],
+    unstar: ["DELETE /gists/{gist_id}/star"],
+    update: ["PATCH /gists/{gist_id}"],
+    updateComment: ["PATCH /gists/{gist_id}/comments/{comment_id}"]
+  },
+  git: {
+    createBlob: ["POST /repos/{owner}/{repo}/git/blobs"],
+    createCommit: ["POST /repos/{owner}/{repo}/git/commits"],
+    createRef: ["POST /repos/{owner}/{repo}/git/refs"],
+    createTag: ["POST /repos/{owner}/{repo}/git/tags"],
+    createTree: ["POST /repos/{owner}/{repo}/git/trees"],
+    deleteRef: ["DELETE /repos/{owner}/{repo}/git/refs/{ref}"],
+    getBlob: ["GET /repos/{owner}/{repo}/git/blobs/{file_sha}"],
+    getCommit: ["GET /repos/{owner}/{repo}/git/commits/{commit_sha}"],
+    getRef: ["GET /repos/{owner}/{repo}/git/ref/{ref}"],
+    getTag: ["GET /repos/{owner}/{repo}/git/tags/{tag_sha}"],
+    getTree: ["GET /repos/{owner}/{repo}/git/trees/{tree_sha}"],
+    listMatchingRefs: ["GET /repos/{owner}/{repo}/git/matching-refs/{ref}"],
+    updateRef: ["PATCH /repos/{owner}/{repo}/git/refs/{ref}"]
+  },
+  gitignore: {
+    getAllTemplates: ["GET /gitignore/templates"],
+    getTemplate: ["GET /gitignore/templates/{name}"]
+  },
+  hostedCompute: {
+    createNetworkConfigurationForOrg: [
+      "POST /orgs/{org}/settings/network-configurations"
+    ],
+    deleteNetworkConfigurationFromOrg: [
+      "DELETE /orgs/{org}/settings/network-configurations/{network_configuration_id}"
+    ],
+    getNetworkConfigurationForOrg: [
+      "GET /orgs/{org}/settings/network-configurations/{network_configuration_id}"
+    ],
+    getNetworkSettingsForOrg: [
+      "GET /orgs/{org}/settings/network-settings/{network_settings_id}"
+    ],
+    listNetworkConfigurationsForOrg: [
+      "GET /orgs/{org}/settings/network-configurations"
+    ],
+    updateNetworkConfigurationForOrg: [
+      "PATCH /orgs/{org}/settings/network-configurations/{network_configuration_id}"
+    ]
+  },
+  interactions: {
+    getRestrictionsForAuthenticatedUser: ["GET /user/interaction-limits"],
+    getRestrictionsForOrg: ["GET /orgs/{org}/interaction-limits"],
+    getRestrictionsForRepo: ["GET /repos/{owner}/{repo}/interaction-limits"],
+    getRestrictionsForYourPublicRepos: [
+      "GET /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "getRestrictionsForAuthenticatedUser"] }
+    ],
+    removeRestrictionsForAuthenticatedUser: ["DELETE /user/interaction-limits"],
+    removeRestrictionsForOrg: ["DELETE /orgs/{org}/interaction-limits"],
+    removeRestrictionsForRepo: [
+      "DELETE /repos/{owner}/{repo}/interaction-limits"
+    ],
+    removeRestrictionsForYourPublicRepos: [
+      "DELETE /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "removeRestrictionsForAuthenticatedUser"] }
+    ],
+    setRestrictionsForAuthenticatedUser: ["PUT /user/interaction-limits"],
+    setRestrictionsForOrg: ["PUT /orgs/{org}/interaction-limits"],
+    setRestrictionsForRepo: ["PUT /repos/{owner}/{repo}/interaction-limits"],
+    setRestrictionsForYourPublicRepos: [
+      "PUT /user/interaction-limits",
+      {},
+      { renamed: ["interactions", "setRestrictionsForAuthenticatedUser"] }
+    ]
+  },
+  issues: {
+    addAssignees: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/assignees"
+    ],
+    addLabels: ["POST /repos/{owner}/{repo}/issues/{issue_number}/labels"],
+    addSubIssue: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
+    ],
+    checkUserCanBeAssigned: ["GET /repos/{owner}/{repo}/assignees/{assignee}"],
+    checkUserCanBeAssignedToIssue: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/assignees/{assignee}"
+    ],
+    create: ["POST /repos/{owner}/{repo}/issues"],
+    createComment: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments"
+    ],
+    createLabel: ["POST /repos/{owner}/{repo}/labels"],
+    createMilestone: ["POST /repos/{owner}/{repo}/milestones"],
+    deleteComment: [
+      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}"
+    ],
+    deleteLabel: ["DELETE /repos/{owner}/{repo}/labels/{name}"],
+    deleteMilestone: [
+      "DELETE /repos/{owner}/{repo}/milestones/{milestone_number}"
+    ],
+    get: ["GET /repos/{owner}/{repo}/issues/{issue_number}"],
+    getComment: ["GET /repos/{owner}/{repo}/issues/comments/{comment_id}"],
+    getEvent: ["GET /repos/{owner}/{repo}/issues/events/{event_id}"],
+    getLabel: ["GET /repos/{owner}/{repo}/labels/{name}"],
+    getMilestone: ["GET /repos/{owner}/{repo}/milestones/{milestone_number}"],
+    list: ["GET /issues"],
+    listAssignees: ["GET /repos/{owner}/{repo}/assignees"],
+    listComments: ["GET /repos/{owner}/{repo}/issues/{issue_number}/comments"],
+    listCommentsForRepo: ["GET /repos/{owner}/{repo}/issues/comments"],
+    listEvents: ["GET /repos/{owner}/{repo}/issues/{issue_number}/events"],
+    listEventsForRepo: ["GET /repos/{owner}/{repo}/issues/events"],
+    listEventsForTimeline: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/timeline"
+    ],
+    listForAuthenticatedUser: ["GET /user/issues"],
+    listForOrg: ["GET /orgs/{org}/issues"],
+    listForRepo: ["GET /repos/{owner}/{repo}/issues"],
+    listLabelsForMilestone: [
+      "GET /repos/{owner}/{repo}/milestones/{milestone_number}/labels"
+    ],
+    listLabelsForRepo: ["GET /repos/{owner}/{repo}/labels"],
+    listLabelsOnIssue: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/labels"
+    ],
+    listMilestones: ["GET /repos/{owner}/{repo}/milestones"],
+    listSubIssues: [
+      "GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues"
+    ],
+    lock: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/lock"],
+    removeAllLabels: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels"
+    ],
+    removeAssignees: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/assignees"
+    ],
+    removeLabel: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/labels/{name}"
+    ],
+    removeSubIssue: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/sub_issue"
+    ],
+    reprioritizeSubIssue: [
+      "PATCH /repos/{owner}/{repo}/issues/{issue_number}/sub_issues/priority"
+    ],
+    setLabels: ["PUT /repos/{owner}/{repo}/issues/{issue_number}/labels"],
+    unlock: ["DELETE /repos/{owner}/{repo}/issues/{issue_number}/lock"],
+    update: ["PATCH /repos/{owner}/{repo}/issues/{issue_number}"],
+    updateComment: ["PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}"],
+    updateLabel: ["PATCH /repos/{owner}/{repo}/labels/{name}"],
+    updateMilestone: [
+      "PATCH /repos/{owner}/{repo}/milestones/{milestone_number}"
+    ]
+  },
+  licenses: {
+    get: ["GET /licenses/{license}"],
+    getAllCommonlyUsed: ["GET /licenses"],
+    getForRepo: ["GET /repos/{owner}/{repo}/license"]
+  },
+  markdown: {
+    render: ["POST /markdown"],
+    renderRaw: [
+      "POST /markdown/raw",
+      { headers: { "content-type": "text/plain; charset=utf-8" } }
+    ]
+  },
+  meta: {
+    get: ["GET /meta"],
+    getAllVersions: ["GET /versions"],
+    getOctocat: ["GET /octocat"],
+    getZen: ["GET /zen"],
+    root: ["GET /"]
+  },
+  migrations: {
+    deleteArchiveForAuthenticatedUser: [
+      "DELETE /user/migrations/{migration_id}/archive"
+    ],
+    deleteArchiveForOrg: [
+      "DELETE /orgs/{org}/migrations/{migration_id}/archive"
+    ],
+    downloadArchiveForOrg: [
+      "GET /orgs/{org}/migrations/{migration_id}/archive"
+    ],
+    getArchiveForAuthenticatedUser: [
+      "GET /user/migrations/{migration_id}/archive"
+    ],
+    getStatusForAuthenticatedUser: ["GET /user/migrations/{migration_id}"],
+    getStatusForOrg: ["GET /orgs/{org}/migrations/{migration_id}"],
+    listForAuthenticatedUser: ["GET /user/migrations"],
+    listForOrg: ["GET /orgs/{org}/migrations"],
+    listReposForAuthenticatedUser: [
+      "GET /user/migrations/{migration_id}/repositories"
+    ],
+    listReposForOrg: ["GET /orgs/{org}/migrations/{migration_id}/repositories"],
+    listReposForUser: [
+      "GET /user/migrations/{migration_id}/repositories",
+      {},
+      { renamed: ["migrations", "listReposForAuthenticatedUser"] }
+    ],
+    startForAuthenticatedUser: ["POST /user/migrations"],
+    startForOrg: ["POST /orgs/{org}/migrations"],
+    unlockRepoForAuthenticatedUser: [
+      "DELETE /user/migrations/{migration_id}/repos/{repo_name}/lock"
+    ],
+    unlockRepoForOrg: [
+      "DELETE /orgs/{org}/migrations/{migration_id}/repos/{repo_name}/lock"
+    ]
+  },
+  oidc: {
+    getOidcCustomSubTemplateForOrg: [
+      "GET /orgs/{org}/actions/oidc/customization/sub"
+    ],
+    updateOidcCustomSubTemplateForOrg: [
+      "PUT /orgs/{org}/actions/oidc/customization/sub"
+    ]
+  },
+  orgs: {
+    addSecurityManagerTeam: [
+      "PUT /orgs/{org}/security-managers/teams/{team_slug}",
+      {},
+      {
+        deprecated: "octokit.rest.orgs.addSecurityManagerTeam() is deprecated, see https://docs.github.com/rest/orgs/security-managers#add-a-security-manager-team"
+      }
+    ],
+    assignTeamToOrgRole: [
+      "PUT /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
+    ],
+    assignUserToOrgRole: [
+      "PUT /orgs/{org}/organization-roles/users/{username}/{role_id}"
+    ],
+    blockUser: ["PUT /orgs/{org}/blocks/{username}"],
+    cancelInvitation: ["DELETE /orgs/{org}/invitations/{invitation_id}"],
+    checkBlockedUser: ["GET /orgs/{org}/blocks/{username}"],
+    checkMembershipForUser: ["GET /orgs/{org}/members/{username}"],
+    checkPublicMembershipForUser: ["GET /orgs/{org}/public_members/{username}"],
+    convertMemberToOutsideCollaborator: [
+      "PUT /orgs/{org}/outside_collaborators/{username}"
+    ],
+    createInvitation: ["POST /orgs/{org}/invitations"],
+    createIssueType: ["POST /orgs/{org}/issue-types"],
+    createOrUpdateCustomProperties: ["PATCH /orgs/{org}/properties/schema"],
+    createOrUpdateCustomPropertiesValuesForRepos: [
+      "PATCH /orgs/{org}/properties/values"
+    ],
+    createOrUpdateCustomProperty: [
+      "PUT /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    createWebhook: ["POST /orgs/{org}/hooks"],
+    delete: ["DELETE /orgs/{org}"],
+    deleteIssueType: ["DELETE /orgs/{org}/issue-types/{issue_type_id}"],
+    deleteWebhook: ["DELETE /orgs/{org}/hooks/{hook_id}"],
+    enableOrDisableSecurityProductOnAllOrgRepos: [
+      "POST /orgs/{org}/{security_product}/{enablement}",
+      {},
+      {
+        deprecated: "octokit.rest.orgs.enableOrDisableSecurityProductOnAllOrgRepos() is deprecated, see https://docs.github.com/rest/orgs/orgs#enable-or-disable-a-security-feature-for-an-organization"
+      }
+    ],
+    get: ["GET /orgs/{org}"],
+    getAllCustomProperties: ["GET /orgs/{org}/properties/schema"],
+    getCustomProperty: [
+      "GET /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    getMembershipForAuthenticatedUser: ["GET /user/memberships/orgs/{org}"],
+    getMembershipForUser: ["GET /orgs/{org}/memberships/{username}"],
+    getOrgRole: ["GET /orgs/{org}/organization-roles/{role_id}"],
+    getOrgRulesetHistory: ["GET /orgs/{org}/rulesets/{ruleset_id}/history"],
+    getOrgRulesetVersion: [
+      "GET /orgs/{org}/rulesets/{ruleset_id}/history/{version_id}"
+    ],
+    getWebhook: ["GET /orgs/{org}/hooks/{hook_id}"],
+    getWebhookConfigForOrg: ["GET /orgs/{org}/hooks/{hook_id}/config"],
+    getWebhookDelivery: [
+      "GET /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}"
+    ],
+    list: ["GET /organizations"],
+    listAppInstallations: ["GET /orgs/{org}/installations"],
+    listAttestations: ["GET /orgs/{org}/attestations/{subject_digest}"],
+    listBlockedUsers: ["GET /orgs/{org}/blocks"],
+    listCustomPropertiesValuesForRepos: ["GET /orgs/{org}/properties/values"],
+    listFailedInvitations: ["GET /orgs/{org}/failed_invitations"],
+    listForAuthenticatedUser: ["GET /user/orgs"],
+    listForUser: ["GET /users/{username}/orgs"],
+    listInvitationTeams: ["GET /orgs/{org}/invitations/{invitation_id}/teams"],
+    listIssueTypes: ["GET /orgs/{org}/issue-types"],
+    listMembers: ["GET /orgs/{org}/members"],
+    listMembershipsForAuthenticatedUser: ["GET /user/memberships/orgs"],
+    listOrgRoleTeams: ["GET /orgs/{org}/organization-roles/{role_id}/teams"],
+    listOrgRoleUsers: ["GET /orgs/{org}/organization-roles/{role_id}/users"],
+    listOrgRoles: ["GET /orgs/{org}/organization-roles"],
+    listOrganizationFineGrainedPermissions: [
+      "GET /orgs/{org}/organization-fine-grained-permissions"
+    ],
+    listOutsideCollaborators: ["GET /orgs/{org}/outside_collaborators"],
+    listPatGrantRepositories: [
+      "GET /orgs/{org}/personal-access-tokens/{pat_id}/repositories"
+    ],
+    listPatGrantRequestRepositories: [
+      "GET /orgs/{org}/personal-access-token-requests/{pat_request_id}/repositories"
+    ],
+    listPatGrantRequests: ["GET /orgs/{org}/personal-access-token-requests"],
+    listPatGrants: ["GET /orgs/{org}/personal-access-tokens"],
+    listPendingInvitations: ["GET /orgs/{org}/invitations"],
+    listPublicMembers: ["GET /orgs/{org}/public_members"],
+    listSecurityManagerTeams: [
+      "GET /orgs/{org}/security-managers",
+      {},
+      {
+        deprecated: "octokit.rest.orgs.listSecurityManagerTeams() is deprecated, see https://docs.github.com/rest/orgs/security-managers#list-security-manager-teams"
+      }
+    ],
+    listWebhookDeliveries: ["GET /orgs/{org}/hooks/{hook_id}/deliveries"],
+    listWebhooks: ["GET /orgs/{org}/hooks"],
+    pingWebhook: ["POST /orgs/{org}/hooks/{hook_id}/pings"],
+    redeliverWebhookDelivery: [
+      "POST /orgs/{org}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
+    ],
+    removeCustomProperty: [
+      "DELETE /orgs/{org}/properties/schema/{custom_property_name}"
+    ],
+    removeMember: ["DELETE /orgs/{org}/members/{username}"],
+    removeMembershipForUser: ["DELETE /orgs/{org}/memberships/{username}"],
+    removeOutsideCollaborator: [
+      "DELETE /orgs/{org}/outside_collaborators/{username}"
+    ],
+    removePublicMembershipForAuthenticatedUser: [
+      "DELETE /orgs/{org}/public_members/{username}"
+    ],
+    removeSecurityManagerTeam: [
+      "DELETE /orgs/{org}/security-managers/teams/{team_slug}",
+      {},
+      {
+        deprecated: "octokit.rest.orgs.removeSecurityManagerTeam() is deprecated, see https://docs.github.com/rest/orgs/security-managers#remove-a-security-manager-team"
+      }
+    ],
+    reviewPatGrantRequest: [
+      "POST /orgs/{org}/personal-access-token-requests/{pat_request_id}"
+    ],
+    reviewPatGrantRequestsInBulk: [
+      "POST /orgs/{org}/personal-access-token-requests"
+    ],
+    revokeAllOrgRolesTeam: [
+      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}"
+    ],
+    revokeAllOrgRolesUser: [
+      "DELETE /orgs/{org}/organization-roles/users/{username}"
+    ],
+    revokeOrgRoleTeam: [
+      "DELETE /orgs/{org}/organization-roles/teams/{team_slug}/{role_id}"
+    ],
+    revokeOrgRoleUser: [
+      "DELETE /orgs/{org}/organization-roles/users/{username}/{role_id}"
+    ],
+    setMembershipForUser: ["PUT /orgs/{org}/memberships/{username}"],
+    setPublicMembershipForAuthenticatedUser: [
+      "PUT /orgs/{org}/public_members/{username}"
+    ],
+    unblockUser: ["DELETE /orgs/{org}/blocks/{username}"],
+    update: ["PATCH /orgs/{org}"],
+    updateIssueType: ["PUT /orgs/{org}/issue-types/{issue_type_id}"],
+    updateMembershipForAuthenticatedUser: [
+      "PATCH /user/memberships/orgs/{org}"
+    ],
+    updatePatAccess: ["POST /orgs/{org}/personal-access-tokens/{pat_id}"],
+    updatePatAccesses: ["POST /orgs/{org}/personal-access-tokens"],
+    updateWebhook: ["PATCH /orgs/{org}/hooks/{hook_id}"],
+    updateWebhookConfigForOrg: ["PATCH /orgs/{org}/hooks/{hook_id}/config"]
+  },
+  packages: {
+    deletePackageForAuthenticatedUser: [
+      "DELETE /user/packages/{package_type}/{package_name}"
+    ],
+    deletePackageForOrg: [
+      "DELETE /orgs/{org}/packages/{package_type}/{package_name}"
+    ],
+    deletePackageForUser: [
+      "DELETE /users/{username}/packages/{package_type}/{package_name}"
+    ],
+    deletePackageVersionForAuthenticatedUser: [
+      "DELETE /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    deletePackageVersionForOrg: [
+      "DELETE /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    deletePackageVersionForUser: [
+      "DELETE /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getAllPackageVersionsForAPackageOwnedByAnOrg: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions",
+      {},
+      { renamed: ["packages", "getAllPackageVersionsForPackageOwnedByOrg"] }
+    ],
+    getAllPackageVersionsForAPackageOwnedByTheAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions",
+      {},
+      {
+        renamed: [
+          "packages",
+          "getAllPackageVersionsForPackageOwnedByAuthenticatedUser"
+        ]
+      }
+    ],
+    getAllPackageVersionsForPackageOwnedByAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions"
+    ],
+    getAllPackageVersionsForPackageOwnedByOrg: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions"
+    ],
+    getAllPackageVersionsForPackageOwnedByUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}/versions"
+    ],
+    getPackageForAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}"
+    ],
+    getPackageForOrganization: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}"
+    ],
+    getPackageForUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}"
+    ],
+    getPackageVersionForAuthenticatedUser: [
+      "GET /user/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getPackageVersionForOrganization: [
+      "GET /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    getPackageVersionForUser: [
+      "GET /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}"
+    ],
+    listDockerMigrationConflictingPackagesForAuthenticatedUser: [
+      "GET /user/docker/conflicts"
+    ],
+    listDockerMigrationConflictingPackagesForOrganization: [
+      "GET /orgs/{org}/docker/conflicts"
+    ],
+    listDockerMigrationConflictingPackagesForUser: [
+      "GET /users/{username}/docker/conflicts"
+    ],
+    listPackagesForAuthenticatedUser: ["GET /user/packages"],
+    listPackagesForOrganization: ["GET /orgs/{org}/packages"],
+    listPackagesForUser: ["GET /users/{username}/packages"],
+    restorePackageForAuthenticatedUser: [
+      "POST /user/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageForOrg: [
+      "POST /orgs/{org}/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageForUser: [
+      "POST /users/{username}/packages/{package_type}/{package_name}/restore{?token}"
+    ],
+    restorePackageVersionForAuthenticatedUser: [
+      "POST /user/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ],
+    restorePackageVersionForOrg: [
+      "POST /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ],
+    restorePackageVersionForUser: [
+      "POST /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}/restore"
+    ]
+  },
+  privateRegistries: {
+    createOrgPrivateRegistry: ["POST /orgs/{org}/private-registries"],
+    deleteOrgPrivateRegistry: [
+      "DELETE /orgs/{org}/private-registries/{secret_name}"
+    ],
+    getOrgPrivateRegistry: ["GET /orgs/{org}/private-registries/{secret_name}"],
+    getOrgPublicKey: ["GET /orgs/{org}/private-registries/public-key"],
+    listOrgPrivateRegistries: ["GET /orgs/{org}/private-registries"],
+    updateOrgPrivateRegistry: [
+      "PATCH /orgs/{org}/private-registries/{secret_name}"
+    ]
+  },
+  pulls: {
+    checkIfMerged: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
+    create: ["POST /repos/{owner}/{repo}/pulls"],
+    createReplyForReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies"
+    ],
+    createReview: ["POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
+    createReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    ],
+    deletePendingReview: [
+      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    deleteReviewComment: [
+      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}"
+    ],
+    dismissReview: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/dismissals"
+    ],
+    get: ["GET /repos/{owner}/{repo}/pulls/{pull_number}"],
+    getReview: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    getReviewComment: ["GET /repos/{owner}/{repo}/pulls/comments/{comment_id}"],
+    list: ["GET /repos/{owner}/{repo}/pulls"],
+    listCommentsForReview: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments"
+    ],
+    listCommits: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/commits"],
+    listFiles: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/files"],
+    listRequestedReviewers: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    listReviewComments: [
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/comments"
+    ],
+    listReviewCommentsForRepo: ["GET /repos/{owner}/{repo}/pulls/comments"],
+    listReviews: ["GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews"],
+    merge: ["PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge"],
+    removeRequestedReviewers: [
+      "DELETE /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    requestReviewers: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers"
+    ],
+    submitReview: [
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/events"
+    ],
+    update: ["PATCH /repos/{owner}/{repo}/pulls/{pull_number}"],
+    updateBranch: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/update-branch"
+    ],
+    updateReview: [
+      "PUT /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}"
+    ],
+    updateReviewComment: [
+      "PATCH /repos/{owner}/{repo}/pulls/comments/{comment_id}"
+    ]
+  },
+  rateLimit: { get: ["GET /rate_limit"] },
+  reactions: {
+    createForCommitComment: [
+      "POST /repos/{owner}/{repo}/comments/{comment_id}/reactions"
+    ],
+    createForIssue: [
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/reactions"
+    ],
+    createForIssueComment: [
+      "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
+    ],
+    createForPullRequestReviewComment: [
+      "POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
+    ],
+    createForRelease: [
+      "POST /repos/{owner}/{repo}/releases/{release_id}/reactions"
+    ],
+    createForTeamDiscussionCommentInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
+    ],
+    createForTeamDiscussionInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
+    ],
+    deleteForCommitComment: [
+      "DELETE /repos/{owner}/{repo}/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForIssue: [
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/reactions/{reaction_id}"
+    ],
+    deleteForIssueComment: [
+      "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForPullRequestComment: [
+      "DELETE /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions/{reaction_id}"
+    ],
+    deleteForRelease: [
+      "DELETE /repos/{owner}/{repo}/releases/{release_id}/reactions/{reaction_id}"
+    ],
+    deleteForTeamDiscussion: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions/{reaction_id}"
+    ],
+    deleteForTeamDiscussionComment: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions/{reaction_id}"
+    ],
+    listForCommitComment: [
+      "GET /repos/{owner}/{repo}/comments/{comment_id}/reactions"
+    ],
+    listForIssue: ["GET /repos/{owner}/{repo}/issues/{issue_number}/reactions"],
+    listForIssueComment: [
+      "GET /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions"
+    ],
+    listForPullRequestReviewComment: [
+      "GET /repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions"
+    ],
+    listForRelease: [
+      "GET /repos/{owner}/{repo}/releases/{release_id}/reactions"
+    ],
+    listForTeamDiscussionCommentInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}/reactions"
+    ],
+    listForTeamDiscussionInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/reactions"
+    ]
+  },
+  repos: {
+    acceptInvitation: [
+      "PATCH /user/repository_invitations/{invitation_id}",
+      {},
+      { renamed: ["repos", "acceptInvitationForAuthenticatedUser"] }
+    ],
+    acceptInvitationForAuthenticatedUser: [
+      "PATCH /user/repository_invitations/{invitation_id}"
+    ],
+    addAppAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    addCollaborator: ["PUT /repos/{owner}/{repo}/collaborators/{username}"],
+    addStatusCheckContexts: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    addTeamAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    addUserAccessRestrictions: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    cancelPagesDeployment: [
+      "POST /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}/cancel"
+    ],
+    checkAutomatedSecurityFixes: [
+      "GET /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    checkCollaborator: ["GET /repos/{owner}/{repo}/collaborators/{username}"],
+    checkPrivateVulnerabilityReporting: [
+      "GET /repos/{owner}/{repo}/private-vulnerability-reporting"
+    ],
+    checkVulnerabilityAlerts: [
+      "GET /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    codeownersErrors: ["GET /repos/{owner}/{repo}/codeowners/errors"],
+    compareCommits: ["GET /repos/{owner}/{repo}/compare/{base}...{head}"],
+    compareCommitsWithBasehead: [
+      "GET /repos/{owner}/{repo}/compare/{basehead}"
+    ],
+    createAttestation: ["POST /repos/{owner}/{repo}/attestations"],
+    createAutolink: ["POST /repos/{owner}/{repo}/autolinks"],
+    createCommitComment: [
+      "POST /repos/{owner}/{repo}/commits/{commit_sha}/comments"
+    ],
+    createCommitSignatureProtection: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    createCommitStatus: ["POST /repos/{owner}/{repo}/statuses/{sha}"],
+    createDeployKey: ["POST /repos/{owner}/{repo}/keys"],
+    createDeployment: ["POST /repos/{owner}/{repo}/deployments"],
+    createDeploymentBranchPolicy: [
+      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
+    ],
+    createDeploymentProtectionRule: [
+      "POST /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
+    ],
+    createDeploymentStatus: [
+      "POST /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
+    ],
+    createDispatchEvent: ["POST /repos/{owner}/{repo}/dispatches"],
+    createForAuthenticatedUser: ["POST /user/repos"],
+    createFork: ["POST /repos/{owner}/{repo}/forks"],
+    createInOrg: ["POST /orgs/{org}/repos"],
+    createOrUpdateCustomPropertiesValues: [
+      "PATCH /repos/{owner}/{repo}/properties/values"
+    ],
+    createOrUpdateEnvironment: [
+      "PUT /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    createOrUpdateFileContents: ["PUT /repos/{owner}/{repo}/contents/{path}"],
+    createOrgRuleset: ["POST /orgs/{org}/rulesets"],
+    createPagesDeployment: ["POST /repos/{owner}/{repo}/pages/deployments"],
+    createPagesSite: ["POST /repos/{owner}/{repo}/pages"],
+    createRelease: ["POST /repos/{owner}/{repo}/releases"],
+    createRepoRuleset: ["POST /repos/{owner}/{repo}/rulesets"],
+    createUsingTemplate: [
+      "POST /repos/{template_owner}/{template_repo}/generate"
+    ],
+    createWebhook: ["POST /repos/{owner}/{repo}/hooks"],
+    declineInvitation: [
+      "DELETE /user/repository_invitations/{invitation_id}",
+      {},
+      { renamed: ["repos", "declineInvitationForAuthenticatedUser"] }
+    ],
+    declineInvitationForAuthenticatedUser: [
+      "DELETE /user/repository_invitations/{invitation_id}"
+    ],
+    delete: ["DELETE /repos/{owner}/{repo}"],
+    deleteAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
+    ],
+    deleteAdminBranchProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    deleteAnEnvironment: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    deleteAutolink: ["DELETE /repos/{owner}/{repo}/autolinks/{autolink_id}"],
+    deleteBranchProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    deleteCommitComment: ["DELETE /repos/{owner}/{repo}/comments/{comment_id}"],
+    deleteCommitSignatureProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    deleteDeployKey: ["DELETE /repos/{owner}/{repo}/keys/{key_id}"],
+    deleteDeployment: [
+      "DELETE /repos/{owner}/{repo}/deployments/{deployment_id}"
+    ],
+    deleteDeploymentBranchPolicy: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    deleteFile: ["DELETE /repos/{owner}/{repo}/contents/{path}"],
+    deleteInvitation: [
+      "DELETE /repos/{owner}/{repo}/invitations/{invitation_id}"
+    ],
+    deleteOrgRuleset: ["DELETE /orgs/{org}/rulesets/{ruleset_id}"],
+    deletePagesSite: ["DELETE /repos/{owner}/{repo}/pages"],
+    deletePullRequestReviewProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    deleteRelease: ["DELETE /repos/{owner}/{repo}/releases/{release_id}"],
+    deleteReleaseAsset: [
+      "DELETE /repos/{owner}/{repo}/releases/assets/{asset_id}"
+    ],
+    deleteRepoRuleset: ["DELETE /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    deleteWebhook: ["DELETE /repos/{owner}/{repo}/hooks/{hook_id}"],
+    disableAutomatedSecurityFixes: [
+      "DELETE /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    disableDeploymentProtectionRule: [
+      "DELETE /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
+    ],
+    disablePrivateVulnerabilityReporting: [
+      "DELETE /repos/{owner}/{repo}/private-vulnerability-reporting"
+    ],
+    disableVulnerabilityAlerts: [
+      "DELETE /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    downloadArchive: [
+      "GET /repos/{owner}/{repo}/zipball/{ref}",
+      {},
+      { renamed: ["repos", "downloadZipballArchive"] }
+    ],
+    downloadTarballArchive: ["GET /repos/{owner}/{repo}/tarball/{ref}"],
+    downloadZipballArchive: ["GET /repos/{owner}/{repo}/zipball/{ref}"],
+    enableAutomatedSecurityFixes: [
+      "PUT /repos/{owner}/{repo}/automated-security-fixes"
+    ],
+    enablePrivateVulnerabilityReporting: [
+      "PUT /repos/{owner}/{repo}/private-vulnerability-reporting"
+    ],
+    enableVulnerabilityAlerts: [
+      "PUT /repos/{owner}/{repo}/vulnerability-alerts"
+    ],
+    generateReleaseNotes: [
+      "POST /repos/{owner}/{repo}/releases/generate-notes"
+    ],
+    get: ["GET /repos/{owner}/{repo}"],
+    getAccessRestrictions: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions"
+    ],
+    getAdminBranchProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    getAllDeploymentProtectionRules: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules"
+    ],
+    getAllEnvironments: ["GET /repos/{owner}/{repo}/environments"],
+    getAllStatusCheckContexts: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts"
+    ],
+    getAllTopics: ["GET /repos/{owner}/{repo}/topics"],
+    getAppsWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps"
+    ],
+    getAutolink: ["GET /repos/{owner}/{repo}/autolinks/{autolink_id}"],
+    getBranch: ["GET /repos/{owner}/{repo}/branches/{branch}"],
+    getBranchProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    getBranchRules: ["GET /repos/{owner}/{repo}/rules/branches/{branch}"],
+    getClones: ["GET /repos/{owner}/{repo}/traffic/clones"],
+    getCodeFrequencyStats: ["GET /repos/{owner}/{repo}/stats/code_frequency"],
+    getCollaboratorPermissionLevel: [
+      "GET /repos/{owner}/{repo}/collaborators/{username}/permission"
+    ],
+    getCombinedStatusForRef: ["GET /repos/{owner}/{repo}/commits/{ref}/status"],
+    getCommit: ["GET /repos/{owner}/{repo}/commits/{ref}"],
+    getCommitActivityStats: ["GET /repos/{owner}/{repo}/stats/commit_activity"],
+    getCommitComment: ["GET /repos/{owner}/{repo}/comments/{comment_id}"],
+    getCommitSignatureProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_signatures"
+    ],
+    getCommunityProfileMetrics: ["GET /repos/{owner}/{repo}/community/profile"],
+    getContent: ["GET /repos/{owner}/{repo}/contents/{path}"],
+    getContributorsStats: ["GET /repos/{owner}/{repo}/stats/contributors"],
+    getCustomDeploymentProtectionRule: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/{protection_rule_id}"
+    ],
+    getCustomPropertiesValues: ["GET /repos/{owner}/{repo}/properties/values"],
+    getDeployKey: ["GET /repos/{owner}/{repo}/keys/{key_id}"],
+    getDeployment: ["GET /repos/{owner}/{repo}/deployments/{deployment_id}"],
+    getDeploymentBranchPolicy: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    getDeploymentStatus: [
+      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses/{status_id}"
+    ],
+    getEnvironment: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}"
+    ],
+    getLatestPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/latest"],
+    getLatestRelease: ["GET /repos/{owner}/{repo}/releases/latest"],
+    getOrgRuleSuite: ["GET /orgs/{org}/rulesets/rule-suites/{rule_suite_id}"],
+    getOrgRuleSuites: ["GET /orgs/{org}/rulesets/rule-suites"],
+    getOrgRuleset: ["GET /orgs/{org}/rulesets/{ruleset_id}"],
+    getOrgRulesets: ["GET /orgs/{org}/rulesets"],
+    getPages: ["GET /repos/{owner}/{repo}/pages"],
+    getPagesBuild: ["GET /repos/{owner}/{repo}/pages/builds/{build_id}"],
+    getPagesDeployment: [
+      "GET /repos/{owner}/{repo}/pages/deployments/{pages_deployment_id}"
+    ],
+    getPagesHealthCheck: ["GET /repos/{owner}/{repo}/pages/health"],
+    getParticipationStats: ["GET /repos/{owner}/{repo}/stats/participation"],
+    getPullRequestReviewProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    getPunchCardStats: ["GET /repos/{owner}/{repo}/stats/punch_card"],
+    getReadme: ["GET /repos/{owner}/{repo}/readme"],
+    getReadmeInDirectory: ["GET /repos/{owner}/{repo}/readme/{dir}"],
+    getRelease: ["GET /repos/{owner}/{repo}/releases/{release_id}"],
+    getReleaseAsset: ["GET /repos/{owner}/{repo}/releases/assets/{asset_id}"],
+    getReleaseByTag: ["GET /repos/{owner}/{repo}/releases/tags/{tag}"],
+    getRepoRuleSuite: [
+      "GET /repos/{owner}/{repo}/rulesets/rule-suites/{rule_suite_id}"
+    ],
+    getRepoRuleSuites: ["GET /repos/{owner}/{repo}/rulesets/rule-suites"],
+    getRepoRuleset: ["GET /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    getRepoRulesetHistory: [
+      "GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history"
+    ],
+    getRepoRulesetVersion: [
+      "GET /repos/{owner}/{repo}/rulesets/{ruleset_id}/history/{version_id}"
+    ],
+    getRepoRulesets: ["GET /repos/{owner}/{repo}/rulesets"],
+    getStatusChecksProtection: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    getTeamsWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams"
+    ],
+    getTopPaths: ["GET /repos/{owner}/{repo}/traffic/popular/paths"],
+    getTopReferrers: ["GET /repos/{owner}/{repo}/traffic/popular/referrers"],
+    getUsersWithAccessToProtectedBranch: [
+      "GET /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users"
+    ],
+    getViews: ["GET /repos/{owner}/{repo}/traffic/views"],
+    getWebhook: ["GET /repos/{owner}/{repo}/hooks/{hook_id}"],
+    getWebhookConfigForRepo: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/config"
+    ],
+    getWebhookDelivery: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}"
+    ],
+    listActivities: ["GET /repos/{owner}/{repo}/activity"],
+    listAttestations: [
+      "GET /repos/{owner}/{repo}/attestations/{subject_digest}"
+    ],
+    listAutolinks: ["GET /repos/{owner}/{repo}/autolinks"],
+    listBranches: ["GET /repos/{owner}/{repo}/branches"],
+    listBranchesForHeadCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/branches-where-head"
+    ],
+    listCollaborators: ["GET /repos/{owner}/{repo}/collaborators"],
+    listCommentsForCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/comments"
+    ],
+    listCommitCommentsForRepo: ["GET /repos/{owner}/{repo}/comments"],
+    listCommitStatusesForRef: [
+      "GET /repos/{owner}/{repo}/commits/{ref}/statuses"
+    ],
+    listCommits: ["GET /repos/{owner}/{repo}/commits"],
+    listContributors: ["GET /repos/{owner}/{repo}/contributors"],
+    listCustomDeploymentRuleIntegrations: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment_protection_rules/apps"
+    ],
+    listDeployKeys: ["GET /repos/{owner}/{repo}/keys"],
+    listDeploymentBranchPolicies: [
+      "GET /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies"
+    ],
+    listDeploymentStatuses: [
+      "GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses"
+    ],
+    listDeployments: ["GET /repos/{owner}/{repo}/deployments"],
+    listForAuthenticatedUser: ["GET /user/repos"],
+    listForOrg: ["GET /orgs/{org}/repos"],
+    listForUser: ["GET /users/{username}/repos"],
+    listForks: ["GET /repos/{owner}/{repo}/forks"],
+    listInvitations: ["GET /repos/{owner}/{repo}/invitations"],
+    listInvitationsForAuthenticatedUser: ["GET /user/repository_invitations"],
+    listLanguages: ["GET /repos/{owner}/{repo}/languages"],
+    listPagesBuilds: ["GET /repos/{owner}/{repo}/pages/builds"],
+    listPublic: ["GET /repositories"],
+    listPullRequestsAssociatedWithCommit: [
+      "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls"
+    ],
+    listReleaseAssets: [
+      "GET /repos/{owner}/{repo}/releases/{release_id}/assets"
+    ],
+    listReleases: ["GET /repos/{owner}/{repo}/releases"],
+    listTags: ["GET /repos/{owner}/{repo}/tags"],
+    listTeams: ["GET /repos/{owner}/{repo}/teams"],
+    listWebhookDeliveries: [
+      "GET /repos/{owner}/{repo}/hooks/{hook_id}/deliveries"
+    ],
+    listWebhooks: ["GET /repos/{owner}/{repo}/hooks"],
+    merge: ["POST /repos/{owner}/{repo}/merges"],
+    mergeUpstream: ["POST /repos/{owner}/{repo}/merge-upstream"],
+    pingWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/pings"],
+    redeliverWebhookDelivery: [
+      "POST /repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}/attempts"
+    ],
+    removeAppAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    removeCollaborator: [
+      "DELETE /repos/{owner}/{repo}/collaborators/{username}"
+    ],
+    removeStatusCheckContexts: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    removeStatusCheckProtection: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    removeTeamAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    removeUserAccessRestrictions: [
+      "DELETE /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    renameBranch: ["POST /repos/{owner}/{repo}/branches/{branch}/rename"],
+    replaceAllTopics: ["PUT /repos/{owner}/{repo}/topics"],
+    requestPagesBuild: ["POST /repos/{owner}/{repo}/pages/builds"],
+    setAdminBranchProtection: [
+      "POST /repos/{owner}/{repo}/branches/{branch}/protection/enforce_admins"
+    ],
+    setAppAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/apps",
+      {},
+      { mapToData: "apps" }
+    ],
+    setStatusCheckContexts: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks/contexts",
+      {},
+      { mapToData: "contexts" }
+    ],
+    setTeamAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/teams",
+      {},
+      { mapToData: "teams" }
+    ],
+    setUserAccessRestrictions: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection/restrictions/users",
+      {},
+      { mapToData: "users" }
+    ],
+    testPushWebhook: ["POST /repos/{owner}/{repo}/hooks/{hook_id}/tests"],
+    transfer: ["POST /repos/{owner}/{repo}/transfer"],
+    update: ["PATCH /repos/{owner}/{repo}"],
+    updateBranchProtection: [
+      "PUT /repos/{owner}/{repo}/branches/{branch}/protection"
+    ],
+    updateCommitComment: ["PATCH /repos/{owner}/{repo}/comments/{comment_id}"],
+    updateDeploymentBranchPolicy: [
+      "PUT /repos/{owner}/{repo}/environments/{environment_name}/deployment-branch-policies/{branch_policy_id}"
+    ],
+    updateInformationAboutPagesSite: ["PUT /repos/{owner}/{repo}/pages"],
+    updateInvitation: [
+      "PATCH /repos/{owner}/{repo}/invitations/{invitation_id}"
+    ],
+    updateOrgRuleset: ["PUT /orgs/{org}/rulesets/{ruleset_id}"],
+    updatePullRequestReviewProtection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_pull_request_reviews"
+    ],
+    updateRelease: ["PATCH /repos/{owner}/{repo}/releases/{release_id}"],
+    updateReleaseAsset: [
+      "PATCH /repos/{owner}/{repo}/releases/assets/{asset_id}"
+    ],
+    updateRepoRuleset: ["PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}"],
+    updateStatusCheckPotection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks",
+      {},
+      { renamed: ["repos", "updateStatusCheckProtection"] }
+    ],
+    updateStatusCheckProtection: [
+      "PATCH /repos/{owner}/{repo}/branches/{branch}/protection/required_status_checks"
+    ],
+    updateWebhook: ["PATCH /repos/{owner}/{repo}/hooks/{hook_id}"],
+    updateWebhookConfigForRepo: [
+      "PATCH /repos/{owner}/{repo}/hooks/{hook_id}/config"
+    ],
+    uploadReleaseAsset: [
+      "POST /repos/{owner}/{repo}/releases/{release_id}/assets{?name,label}",
+      { baseUrl: "https://uploads.github.com" }
+    ]
+  },
+  search: {
+    code: ["GET /search/code"],
+    commits: ["GET /search/commits"],
+    issuesAndPullRequests: [
+      "GET /search/issues",
+      {},
+      {
+        deprecated: "octokit.rest.search.issuesAndPullRequests() is deprecated, see https://docs.github.com/rest/search/search#search-issues-and-pull-requests"
+      }
+    ],
+    labels: ["GET /search/labels"],
+    repos: ["GET /search/repositories"],
+    topics: ["GET /search/topics"],
+    users: ["GET /search/users"]
+  },
+  secretScanning: {
+    createPushProtectionBypass: [
+      "POST /repos/{owner}/{repo}/secret-scanning/push-protection-bypasses"
+    ],
+    getAlert: [
+      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
+    ],
+    getScanHistory: ["GET /repos/{owner}/{repo}/secret-scanning/scan-history"],
+    listAlertsForEnterprise: [
+      "GET /enterprises/{enterprise}/secret-scanning/alerts"
+    ],
+    listAlertsForOrg: ["GET /orgs/{org}/secret-scanning/alerts"],
+    listAlertsForRepo: ["GET /repos/{owner}/{repo}/secret-scanning/alerts"],
+    listLocationsForAlert: [
+      "GET /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}/locations"
+    ],
+    updateAlert: [
+      "PATCH /repos/{owner}/{repo}/secret-scanning/alerts/{alert_number}"
+    ]
+  },
+  securityAdvisories: {
+    createFork: [
+      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/forks"
+    ],
+    createPrivateVulnerabilityReport: [
+      "POST /repos/{owner}/{repo}/security-advisories/reports"
+    ],
+    createRepositoryAdvisory: [
+      "POST /repos/{owner}/{repo}/security-advisories"
+    ],
+    createRepositoryAdvisoryCveRequest: [
+      "POST /repos/{owner}/{repo}/security-advisories/{ghsa_id}/cve"
+    ],
+    getGlobalAdvisory: ["GET /advisories/{ghsa_id}"],
+    getRepositoryAdvisory: [
+      "GET /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
+    ],
+    listGlobalAdvisories: ["GET /advisories"],
+    listOrgRepositoryAdvisories: ["GET /orgs/{org}/security-advisories"],
+    listRepositoryAdvisories: ["GET /repos/{owner}/{repo}/security-advisories"],
+    updateRepositoryAdvisory: [
+      "PATCH /repos/{owner}/{repo}/security-advisories/{ghsa_id}"
+    ]
+  },
+  teams: {
+    addOrUpdateMembershipForUserInOrg: [
+      "PUT /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    addOrUpdateRepoPermissionsInOrg: [
+      "PUT /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    checkPermissionsForRepoInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    create: ["POST /orgs/{org}/teams"],
+    createDiscussionCommentInOrg: [
+      "POST /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
+    ],
+    createDiscussionInOrg: ["POST /orgs/{org}/teams/{team_slug}/discussions"],
+    deleteDiscussionCommentInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    deleteDiscussionInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    deleteInOrg: ["DELETE /orgs/{org}/teams/{team_slug}"],
+    getByName: ["GET /orgs/{org}/teams/{team_slug}"],
+    getDiscussionCommentInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    getDiscussionInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    getMembershipForUserInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    list: ["GET /orgs/{org}/teams"],
+    listChildInOrg: ["GET /orgs/{org}/teams/{team_slug}/teams"],
+    listDiscussionCommentsInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments"
+    ],
+    listDiscussionsInOrg: ["GET /orgs/{org}/teams/{team_slug}/discussions"],
+    listForAuthenticatedUser: ["GET /user/teams"],
+    listMembersInOrg: ["GET /orgs/{org}/teams/{team_slug}/members"],
+    listPendingInvitationsInOrg: [
+      "GET /orgs/{org}/teams/{team_slug}/invitations"
+    ],
+    listReposInOrg: ["GET /orgs/{org}/teams/{team_slug}/repos"],
+    removeMembershipForUserInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/memberships/{username}"
+    ],
+    removeRepoInOrg: [
+      "DELETE /orgs/{org}/teams/{team_slug}/repos/{owner}/{repo}"
+    ],
+    updateDiscussionCommentInOrg: [
+      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}/comments/{comment_number}"
+    ],
+    updateDiscussionInOrg: [
+      "PATCH /orgs/{org}/teams/{team_slug}/discussions/{discussion_number}"
+    ],
+    updateInOrg: ["PATCH /orgs/{org}/teams/{team_slug}"]
+  },
+  users: {
+    addEmailForAuthenticated: [
+      "POST /user/emails",
+      {},
+      { renamed: ["users", "addEmailForAuthenticatedUser"] }
+    ],
+    addEmailForAuthenticatedUser: ["POST /user/emails"],
+    addSocialAccountForAuthenticatedUser: ["POST /user/social_accounts"],
+    block: ["PUT /user/blocks/{username}"],
+    checkBlocked: ["GET /user/blocks/{username}"],
+    checkFollowingForUser: ["GET /users/{username}/following/{target_user}"],
+    checkPersonIsFollowedByAuthenticated: ["GET /user/following/{username}"],
+    createGpgKeyForAuthenticated: [
+      "POST /user/gpg_keys",
+      {},
+      { renamed: ["users", "createGpgKeyForAuthenticatedUser"] }
+    ],
+    createGpgKeyForAuthenticatedUser: ["POST /user/gpg_keys"],
+    createPublicSshKeyForAuthenticated: [
+      "POST /user/keys",
+      {},
+      { renamed: ["users", "createPublicSshKeyForAuthenticatedUser"] }
+    ],
+    createPublicSshKeyForAuthenticatedUser: ["POST /user/keys"],
+    createSshSigningKeyForAuthenticatedUser: ["POST /user/ssh_signing_keys"],
+    deleteEmailForAuthenticated: [
+      "DELETE /user/emails",
+      {},
+      { renamed: ["users", "deleteEmailForAuthenticatedUser"] }
+    ],
+    deleteEmailForAuthenticatedUser: ["DELETE /user/emails"],
+    deleteGpgKeyForAuthenticated: [
+      "DELETE /user/gpg_keys/{gpg_key_id}",
+      {},
+      { renamed: ["users", "deleteGpgKeyForAuthenticatedUser"] }
+    ],
+    deleteGpgKeyForAuthenticatedUser: ["DELETE /user/gpg_keys/{gpg_key_id}"],
+    deletePublicSshKeyForAuthenticated: [
+      "DELETE /user/keys/{key_id}",
+      {},
+      { renamed: ["users", "deletePublicSshKeyForAuthenticatedUser"] }
+    ],
+    deletePublicSshKeyForAuthenticatedUser: ["DELETE /user/keys/{key_id}"],
+    deleteSocialAccountForAuthenticatedUser: ["DELETE /user/social_accounts"],
+    deleteSshSigningKeyForAuthenticatedUser: [
+      "DELETE /user/ssh_signing_keys/{ssh_signing_key_id}"
+    ],
+    follow: ["PUT /user/following/{username}"],
+    getAuthenticated: ["GET /user"],
+    getById: ["GET /user/{account_id}"],
+    getByUsername: ["GET /users/{username}"],
+    getContextForUser: ["GET /users/{username}/hovercard"],
+    getGpgKeyForAuthenticated: [
+      "GET /user/gpg_keys/{gpg_key_id}",
+      {},
+      { renamed: ["users", "getGpgKeyForAuthenticatedUser"] }
+    ],
+    getGpgKeyForAuthenticatedUser: ["GET /user/gpg_keys/{gpg_key_id}"],
+    getPublicSshKeyForAuthenticated: [
+      "GET /user/keys/{key_id}",
+      {},
+      { renamed: ["users", "getPublicSshKeyForAuthenticatedUser"] }
+    ],
+    getPublicSshKeyForAuthenticatedUser: ["GET /user/keys/{key_id}"],
+    getSshSigningKeyForAuthenticatedUser: [
+      "GET /user/ssh_signing_keys/{ssh_signing_key_id}"
+    ],
+    list: ["GET /users"],
+    listAttestations: ["GET /users/{username}/attestations/{subject_digest}"],
+    listBlockedByAuthenticated: [
+      "GET /user/blocks",
+      {},
+      { renamed: ["users", "listBlockedByAuthenticatedUser"] }
+    ],
+    listBlockedByAuthenticatedUser: ["GET /user/blocks"],
+    listEmailsForAuthenticated: [
+      "GET /user/emails",
+      {},
+      { renamed: ["users", "listEmailsForAuthenticatedUser"] }
+    ],
+    listEmailsForAuthenticatedUser: ["GET /user/emails"],
+    listFollowedByAuthenticated: [
+      "GET /user/following",
+      {},
+      { renamed: ["users", "listFollowedByAuthenticatedUser"] }
+    ],
+    listFollowedByAuthenticatedUser: ["GET /user/following"],
+    listFollowersForAuthenticatedUser: ["GET /user/followers"],
+    listFollowersForUser: ["GET /users/{username}/followers"],
+    listFollowingForUser: ["GET /users/{username}/following"],
+    listGpgKeysForAuthenticated: [
+      "GET /user/gpg_keys",
+      {},
+      { renamed: ["users", "listGpgKeysForAuthenticatedUser"] }
+    ],
+    listGpgKeysForAuthenticatedUser: ["GET /user/gpg_keys"],
+    listGpgKeysForUser: ["GET /users/{username}/gpg_keys"],
+    listPublicEmailsForAuthenticated: [
+      "GET /user/public_emails",
+      {},
+      { renamed: ["users", "listPublicEmailsForAuthenticatedUser"] }
+    ],
+    listPublicEmailsForAuthenticatedUser: ["GET /user/public_emails"],
+    listPublicKeysForUser: ["GET /users/{username}/keys"],
+    listPublicSshKeysForAuthenticated: [
+      "GET /user/keys",
+      {},
+      { renamed: ["users", "listPublicSshKeysForAuthenticatedUser"] }
+    ],
+    listPublicSshKeysForAuthenticatedUser: ["GET /user/keys"],
+    listSocialAccountsForAuthenticatedUser: ["GET /user/social_accounts"],
+    listSocialAccountsForUser: ["GET /users/{username}/social_accounts"],
+    listSshSigningKeysForAuthenticatedUser: ["GET /user/ssh_signing_keys"],
+    listSshSigningKeysForUser: ["GET /users/{username}/ssh_signing_keys"],
+    setPrimaryEmailVisibilityForAuthenticated: [
+      "PATCH /user/email/visibility",
+      {},
+      { renamed: ["users", "setPrimaryEmailVisibilityForAuthenticatedUser"] }
+    ],
+    setPrimaryEmailVisibilityForAuthenticatedUser: [
+      "PATCH /user/email/visibility"
+    ],
+    unblock: ["DELETE /user/blocks/{username}"],
+    unfollow: ["DELETE /user/following/{username}"],
+    updateAuthenticated: ["PATCH /user"]
+  }
+};
+var endpoints_default = Endpoints;
+
+// node_modules/.pnpm/@octokit+plugin-rest-endpoint-methods@16.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-rest-endpoint-methods/dist-src/endpoints-to-methods.js
+var endpointMethodsMap = /* @__PURE__ */ new Map();
+for (const [scope, endpoints] of Object.entries(endpoints_default)) {
+  for (const [methodName, endpoint2] of Object.entries(endpoints)) {
+    const [route, defaults, decorations] = endpoint2;
+    const [method, url] = route.split(/ /);
+    const endpointDefaults = Object.assign(
+      {
+        method,
+        url
+      },
+      defaults
+    );
+    if (!endpointMethodsMap.has(scope)) {
+      endpointMethodsMap.set(scope, /* @__PURE__ */ new Map());
+    }
+    endpointMethodsMap.get(scope).set(methodName, {
+      scope,
+      methodName,
+      endpointDefaults,
+      decorations
+    });
+  }
+}
+var handler = {
+  has({ scope }, methodName) {
+    return endpointMethodsMap.get(scope).has(methodName);
+  },
+  getOwnPropertyDescriptor(target, methodName) {
+    return {
+      value: this.get(target, methodName),
+      // ensures method is in the cache
+      configurable: true,
+      writable: true,
+      enumerable: true
+    };
+  },
+  defineProperty(target, methodName, descriptor) {
+    Object.defineProperty(target.cache, methodName, descriptor);
+    return true;
+  },
+  deleteProperty(target, methodName) {
+    delete target.cache[methodName];
+    return true;
+  },
+  ownKeys({ scope }) {
+    return [...endpointMethodsMap.get(scope).keys()];
+  },
+  set(target, methodName, value) {
+    return target.cache[methodName] = value;
+  },
+  get({ octokit, scope, cache }, methodName) {
+    if (cache[methodName]) {
+      return cache[methodName];
+    }
+    const method = endpointMethodsMap.get(scope).get(methodName);
+    if (!method) {
+      return void 0;
+    }
+    const { endpointDefaults, decorations } = method;
+    if (decorations) {
+      cache[methodName] = decorate(
+        octokit,
+        scope,
+        methodName,
+        endpointDefaults,
+        decorations
+      );
+    } else {
+      cache[methodName] = octokit.request.defaults(endpointDefaults);
+    }
+    return cache[methodName];
+  }
+};
+function endpointsToMethods(octokit) {
+  const newMethods = {};
+  for (const scope of endpointMethodsMap.keys()) {
+    newMethods[scope] = new Proxy({ octokit, scope, cache: {} }, handler);
+  }
+  return newMethods;
+}
+function decorate(octokit, scope, methodName, defaults, decorations) {
+  const requestWithDefaults = octokit.request.defaults(defaults);
+  function withDecorations(...args) {
+    let options = requestWithDefaults.endpoint.merge(...args);
+    if (decorations.mapToData) {
+      options = Object.assign({}, options, {
+        data: options[decorations.mapToData],
+        [decorations.mapToData]: void 0
+      });
+      return requestWithDefaults(options);
+    }
+    if (decorations.renamed) {
+      const [newScope, newMethodName] = decorations.renamed;
+      octokit.log.warn(
+        `octokit.${scope}.${methodName}() has been renamed to octokit.${newScope}.${newMethodName}()`
+      );
+    }
+    if (decorations.deprecated) {
+      octokit.log.warn(decorations.deprecated);
+    }
+    if (decorations.renamedParameters) {
+      const options2 = requestWithDefaults.endpoint.merge(...args);
+      for (const [name, alias] of Object.entries(
+        decorations.renamedParameters
+      )) {
+        if (name in options2) {
+          octokit.log.warn(
+            `"${name}" parameter is deprecated for "octokit.${scope}.${methodName}()". Use "${alias}" instead`
+          );
+          if (!(alias in options2)) {
+            options2[alias] = options2[name];
+          }
+          delete options2[name];
+        }
+      }
+      return requestWithDefaults(options2);
+    }
+    return requestWithDefaults(...args);
+  }
+  return Object.assign(withDecorations, requestWithDefaults);
+}
+
+// node_modules/.pnpm/@octokit+plugin-rest-endpoint-methods@16.0.0_@octokit+core@7.0.2/node_modules/@octokit/plugin-rest-endpoint-methods/dist-src/index.js
+function restEndpointMethods(octokit) {
+  const api = endpointsToMethods(octokit);
+  return {
+    rest: api
+  };
+}
+restEndpointMethods.VERSION = VERSION7;
+function legacyRestEndpointMethods(octokit) {
+  const api = endpointsToMethods(octokit);
+  return {
+    ...api,
+    rest: api
+  };
+}
+legacyRestEndpointMethods.VERSION = VERSION7;
+
+// node_modules/.pnpm/@octokit+rest@22.0.0/node_modules/@octokit/rest/dist-src/version.js
+var VERSION8 = "22.0.0";
+
+// node_modules/.pnpm/@octokit+rest@22.0.0/node_modules/@octokit/rest/dist-src/index.js
+var Octokit2 = Octokit.plugin(requestLog, legacyRestEndpointMethods, paginateRest).defaults(
+  {
+    userAgent: `octokit-rest.js/${VERSION8}`
+  }
+);
+
 // src/utils/logger.ts
 var import_pino = __toESM(require_pino());
 var logger = (0, import_pino.default)({
@@ -37889,10 +41314,213 @@ var logger = (0, import_pino.default)({
   } : void 0
 });
 
-// src/handlers/webhook.ts
-async function webhookHandler(_request, reply) {
-  logger.info("Webhook received");
-  reply.code(200).send({ status: "ok" });
+// src/services/githubService.ts
+var GitHubService = class {
+  octokit;
+  constructor() {
+    if (!appConfig.github.token) {
+      throw new Error("GITHUB_TOKEN is required but not provided");
+    }
+    this.octokit = new Octokit2({
+      auth: appConfig.github.token
+    });
+  }
+  async fetchPullRequestDiff({
+    owner,
+    repo,
+    prNumber
+  }) {
+    try {
+      logger.info("Fetching PR diff", { owner, repo, prNumber });
+      const response = await this.octokit.rest.pulls.listFiles({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+      const files = response.data.map((file) => ({
+        filename: file.filename,
+        status: file.status,
+        patch: file.patch || void 0,
+        additions: file.additions,
+        deletions: file.deletions,
+        changes: file.changes
+      }));
+      logger.info("Successfully fetched PR diff", {
+        owner,
+        repo,
+        prNumber,
+        fileCount: files.length
+      });
+      return { files };
+    } catch (error) {
+      logger.error("Failed to fetch PR diff", {
+        owner,
+        repo,
+        prNumber,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+      if (error instanceof Error) {
+        if (error.message.includes("Not Found")) {
+          throw new Error(`PR #${prNumber} not found in ${owner}/${repo}`);
+        }
+        if (error.message.includes("Bad credentials")) {
+          throw new Error("Invalid GitHub token");
+        }
+        if (error.message.includes("rate limit")) {
+          throw new Error("GitHub API rate limit exceeded");
+        }
+      }
+      throw new Error(
+        `Failed to fetch PR diff: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+  async fetchPullRequestInfo({
+    owner,
+    repo,
+    prNumber
+  }) {
+    try {
+      logger.info("Fetching PR info", { owner, repo, prNumber });
+      const response = await this.octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber
+      });
+      const pr = response.data;
+      return {
+        title: pr.title,
+        body: pr.body,
+        htmlUrl: pr.html_url,
+        state: pr.state,
+        user: {
+          login: pr.user?.login || "unknown",
+          avatarUrl: pr.user?.avatar_url || ""
+        }
+      };
+    } catch (error) {
+      logger.error("Failed to fetch PR info", {
+        owner,
+        repo,
+        prNumber,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+      throw new Error(
+        `Failed to fetch PR info: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+};
+var githubService = new GitHubService();
+
+// src/types/github.ts
+var PRDataSchema = external_exports.object({
+  prNumber: external_exports.number(),
+  prTitle: external_exports.string(),
+  prBody: external_exports.string(),
+  prHtmlUrl: external_exports.string(),
+  repo: external_exports.object({
+    owner: external_exports.string(),
+    name: external_exports.string(),
+    fullName: external_exports.string()
+  }),
+  sender: external_exports.object({
+    login: external_exports.string(),
+    avatarUrl: external_exports.string()
+  }),
+  action: external_exports.string()
+});
+var GitHubWebhookSchema = external_exports.object({
+  action: external_exports.string(),
+  number: external_exports.number().optional(),
+  pull_request: external_exports.object({
+    number: external_exports.number(),
+    title: external_exports.string(),
+    body: external_exports.string().nullable(),
+    html_url: external_exports.string()
+  }).optional(),
+  repository: external_exports.object({
+    owner: external_exports.object({
+      login: external_exports.string()
+    }),
+    name: external_exports.string(),
+    full_name: external_exports.string()
+  }),
+  sender: external_exports.object({
+    login: external_exports.string(),
+    avatar_url: external_exports.string()
+  })
+});
+
+// src/handlers/githubWebhook.ts
+var SUPPORTED_ACTIONS = ["opened", "reopened", "synchronize"];
+async function githubWebhookHandler(request2, reply) {
+  try {
+    const eventType = request2.headers["x-github-event"];
+    if (eventType !== "pull_request") {
+      logger.info("Ignoring non-pull_request event", { eventType });
+      reply.code(200).send({ status: "ignored", reason: "not a pull_request event" });
+      return;
+    }
+    const payload = GitHubWebhookSchema.parse(request2.body);
+    if (!SUPPORTED_ACTIONS.includes(
+      payload.action
+    )) {
+      logger.info("Ignoring unsupported PR action", { action: payload.action });
+      reply.code(200).send({ status: "ignored", reason: "unsupported action" });
+      return;
+    }
+    if (!payload.pull_request) {
+      logger.error("Missing pull_request in payload");
+      reply.code(400).send({ error: "Missing pull_request in payload" });
+      return;
+    }
+    const prData = PRDataSchema.parse({
+      prNumber: payload.pull_request.number,
+      prTitle: payload.pull_request.title,
+      prBody: payload.pull_request.body || "",
+      prHtmlUrl: payload.pull_request.html_url,
+      repo: {
+        owner: payload.repository.owner.login,
+        name: payload.repository.name,
+        fullName: payload.repository.full_name
+      },
+      sender: {
+        login: payload.sender.login,
+        avatarUrl: payload.sender.avatar_url
+      },
+      action: payload.action
+    });
+    logger.info("Processing PR webhook", {
+      prNumber: prData.prNumber,
+      action: prData.action,
+      repo: prData.repo.fullName
+    });
+    const diffResponse = await githubService.fetchPullRequestDiff({
+      owner: prData.repo.owner,
+      repo: prData.repo.name,
+      prNumber: prData.prNumber
+    });
+    logger.info("PR diff fetched successfully", {
+      prNumber: prData.prNumber,
+      fileCount: diffResponse.files.length,
+      filesWithPatches: diffResponse.files.filter((f) => f.patch).length
+    });
+    reply.code(200).send({
+      status: "received",
+      prNumber: prData.prNumber,
+      filesChanged: diffResponse.files.length
+    });
+  } catch (error) {
+    logger.error("GitHub webhook handler error", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : void 0
+    });
+    reply.code(500).send({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
 }
 
 // src/index.ts
@@ -37902,7 +41530,7 @@ var server = (0, import_fastify.default)({
 server.register(import_cors.default, {
   origin: true
 });
-server.post("/webhook", webhookHandler);
+server.post("/webhook", githubWebhookHandler);
 server.get("/health", async () => {
   return { status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() };
 });
@@ -37918,6 +41546,15 @@ var start = async () => {
 start();
 /*! Bundled license information:
 
+toad-cache/dist/toad-cache.cjs:
+  (**
+   * toad-cache
+   *
+   * @copyright 2024 Igor Savin <kibertoad@gmail.com>
+   * @license MIT
+   * @version 3.7.0
+   *)
+
 @fastify/forwarded/index.js:
   (*!
    * forwarded
@@ -37931,15 +41568,6 @@ start();
    * Copyright(c) 2021 Fastify collaborators
    * Copyright(c) 2014-2016 Douglas Christopher Wilson
    * MIT Licensed
-   *)
-
-toad-cache/dist/toad-cache.cjs:
-  (**
-   * toad-cache
-   *
-   * @copyright 2024 Igor Savin <kibertoad@gmail.com>
-   * @license MIT
-   * @version 3.7.0
    *)
 
 light-my-request/lib/form-data.js:

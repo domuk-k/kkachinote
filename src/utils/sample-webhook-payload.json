@@ -1,0 +1,21 @@
+{
+	"action": "opened",
+	"number": 1,
+	"pull_request": {
+		"number": 1,
+		"title": "Add new feature",
+		"body": "This PR adds a new feature for better user experience.",
+		"html_url": "https://github.com/owner/repo/pull/1"
+	},
+	"repository": {
+		"owner": {
+			"login": "owner"
+		},
+		"name": "repo",
+		"full_name": "owner/repo"
+	},
+	"sender": {
+		"login": "contributor",
+		"avatar_url": "https://github.com/contributor.png"
+	}
+}
