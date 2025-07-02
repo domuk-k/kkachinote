@@ -10,7 +10,10 @@
       "Bash(pnpm build)",
       "Bash(git add:*)",
       "Bash(git branch:*)",
-      "Bash(git cherry-pick:*)"
+      "Bash(git cherry-pick:*)",
+      "Bash(rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

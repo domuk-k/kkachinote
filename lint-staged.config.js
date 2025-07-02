@@ -1,3 +1,3 @@
-export default {
-	"*.{ts,js}": ["biome check . --apply", "pnpm build"],
+module.exports = {
+	"src/**/*.{ts,js}": ["biome check --write", "biome lint --write"],
 };
