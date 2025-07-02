@@ -1,7 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { reviewPlugin } from "../plugins/reviewPlugin.js";
 import { githubService } from "../services/githubService.js";
 import { GitHubWebhookSchema, PRDataSchema } from "../types/github.js";
 import { logger } from "../utils/logger.js";
+import { parseReviewStyle } from "../utils/reviewStyleParser.js";
 
 const SUPPORTED_ACTIONS = ["opened", "reopened", "synchronize"] as const;
 
@@ -74,13 +76,42 @@ export async function githubWebhookHandler(
 			filesWithPatches: diffResponse.files.filter((f) => f.patch).length,
 		});
 
-		// TODO: Pass to review plugins (Step 4-5)
-		// TODO: Generate PR review/summary (Step 6-7)
+		// Generate review comments
+		const diffText = diffResponse.files
+			.map((file) => `--- a/${file.filename}\n+++ b/${file.filename}\n${file.patch || ""}`)
+			.join("\n\n");
+
+		logger.info("Starting review generation", {
+			prNumber: prData.prNumber,
+			diffLength: diffText.length,
+			fileCount: diffResponse.files.length,
+		});
+
+		const reviewStyle = await parseReviewStyle(".");
+		const reviewComments = await reviewPlugin({
+			diff: diffText,
+			style: reviewStyle,
+		});
+
+		logger.info("Review comments generated", {
+			prNumber: prData.prNumber,
+			commentsCount: reviewComments.length,
+			comments: reviewComments,
+		});
+
+		// TODO: Post review comments to GitHub PR (requires GitHub API integration)
+		logger.info("Review comments ready for posting to GitHub", {
+			prNumber: prData.prNumber,
+			repoFullName: prData.repo.fullName,
+			commentsPreview: reviewComments.slice(0, 2),
+		});
 
 		reply.code(200).send({
-			status: "received",
+			status: "processed",
 			prNumber: prData.prNumber,
 			filesChanged: diffResponse.files.length,
+			reviewCommentsGenerated: reviewComments.length,
+			reviewComments: reviewComments,
 		});
 	} catch (error) {
 		logger.error("GitHub webhook handler error", {

@@ -13,7 +13,17 @@
 			"Bash(git cherry-pick:*)",
 			"Bash(rm:*)",
 			"Bash(git reset:*)",
-			"Bash(git commit:*)"
+			"Bash(git commit:*)",
+			"Bash(pnpm dev:*)",
+			"Bash(cp:*)",
+			"Bash(lsof:*)",
+			"Bash(kill:*)",
+			"Bash(git restore:*)",
+			"Bash(npm run build:*)",
+			"Bash(pnpm:*)",
+			"mcp__ide__getDiagnostics",
+			"Bash(rg:*)",
+			"Bash(curl:*)"
 		],
 		"deny": []
 	}

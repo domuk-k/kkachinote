@@ -76,55 +76,6 @@ export class GitHubService {
 			);
 		}
 	}
-
-	async fetchPullRequestInfo({
-		owner,
-		repo,
-		prNumber,
-	}: FetchPRDiffParams): Promise<{
-		title: string;
-		body: string | null;
-		htmlUrl: string;
-		state: string;
-		user: {
-			login: string;
-			avatarUrl: string;
-		};
-	}> {
-		try {
-			logger.info("Fetching PR info", { owner, repo, prNumber });
-
-			const response = await this.octokit.rest.pulls.get({
-				owner,
-				repo,
-				pull_number: prNumber,
-			});
-
-			const pr = response.data;
-
-			return {
-				title: pr.title,
-				body: pr.body,
-				htmlUrl: pr.html_url,
-				state: pr.state,
-				user: {
-					login: pr.user?.login || "unknown",
-					avatarUrl: pr.user?.avatar_url || "",
-				},
-			};
-		} catch (error) {
-			logger.error("Failed to fetch PR info", {
-				owner,
-				repo,
-				prNumber,
-				error: error instanceof Error ? error.message : "Unknown error",
-			});
-
-			throw new Error(
-				`Failed to fetch PR info: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
-	}
 }
 
 export const githubService = new GitHubService();
